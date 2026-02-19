@@ -25,7 +25,7 @@ const SPOILAGE_RATE = 0.02; // 2% of excess food spoils per tick
 
 export function createInitialResources(): Resources {
   return {
-    food: 50,
+    food: 0,
     population: 5,
     maxPopulation: INITIAL_MAX_POP,
     materials: 0,
