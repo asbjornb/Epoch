@@ -22,7 +22,7 @@ const RAIDER_YEAR = 1500;
 const RAIDER_STRENGTH_REQUIRED = 30;
 const WINTER_START = 4000;
 const WINTER_END = 4500;
-const INITIAL_MAX_POP = 8;
+const INITIAL_MAX_POP = 2;
 const INITIAL_FOOD_STORAGE = 200;
 const SPOILAGE_RATE = 0.02; // 2% of excess food spoils per tick
 
@@ -354,7 +354,6 @@ function applyActionCompletion(
     case "build_hut":
       resources.maxPopulation += 3;
       log.push({ year, message: `Hut built. Population capacity now ${resources.maxPopulation}.`, type: "info" });
-      resources.population += 2;
       break;
     case "build_granary":
       resources.foodStorage += Math.floor(150 * outputMult);
