@@ -5,22 +5,32 @@ import { ResourceBar } from "./components/ResourceBar.tsx";
 import { SkillsPanel } from "./components/SkillsPanel.tsx";
 import { Controls } from "./components/Controls.tsx";
 import { EventLog } from "./components/EventLog.tsx";
+import { SettingsPanel } from "./components/SettingsPanel.tsx";
 
 function App() {
   const { state, dispatch } = useGame();
   const [skillsOpen, setSkillsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>Epoch</h1>
         <span className="app-subtitle">Civilization Loop Strategy</span>
-        <button
-          className="mobile-skills-btn"
-          onClick={() => setSkillsOpen(true)}
-        >
-          Skills
-        </button>
+        <div className="header-right">
+          <button
+            className="settings-btn"
+            onClick={() => setSettingsOpen(true)}
+          >
+            Settings
+          </button>
+          <button
+            className="mobile-skills-btn"
+            onClick={() => setSkillsOpen(true)}
+          >
+            Skills
+          </button>
+        </div>
       </header>
 
       <ResourceBar
@@ -59,6 +69,15 @@ function App() {
             <SkillsPanel skills={state.skills} />
           </div>
         </div>
+      )}
+
+      {/* Settings modal */}
+      {settingsOpen && (
+        <SettingsPanel
+          state={state}
+          dispatch={dispatch}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
     </div>
   );

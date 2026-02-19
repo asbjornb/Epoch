@@ -96,6 +96,13 @@ h1, h2, h3 {
   color: var(--text-dim);
 }
 
+.header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .app-main {
   display: grid;
   grid-template-columns: 1fr 280px;
@@ -948,6 +955,150 @@ h1, h2, h3 {
   color: var(--text-bright);
 }
 
+/* ===== Settings Modal ===== */
+.settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text);
+  transition: background 0.12s;
+  gap: 4px;
+}
+
+.settings-btn:hover {
+  background: var(--bg-hover);
+}
+
+.settings-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.settings-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-modal-header h3 {
+  font-size: 0.95rem;
+}
+
+.settings-modal-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  transition: background 0.12s;
+}
+
+.settings-modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-bright);
+}
+
+.settings-feedback {
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.settings-feedback-success {
+  background: rgba(74, 124, 63, 0.15);
+  color: var(--success);
+}
+
+.settings-feedback-danger {
+  background: rgba(201, 64, 64, 0.15);
+  color: var(--danger);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-section-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.settings-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.settings-import-textarea {
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.settings-import-textarea:focus {
+  outline: 1px solid var(--accent);
+  border-color: var(--accent);
+}
+
+.settings-danger-zone {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.settings-reset-btn {
+  color: var(--danger);
+  border-color: var(--danger) !important;
+}
+
+.settings-reset-btn:hover {
+  background: rgba(201, 64, 64, 0.15) !important;
+}
+
+.settings-reset-btn.confirming {
+  background: rgba(201, 64, 64, 0.15);
+  font-weight: 600;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 700px) {
   .app-main {
@@ -975,7 +1126,6 @@ h1, h2, h3 {
 
   .mobile-skills-btn {
     display: inline-flex;
-    margin-left: auto;
     padding: 4px 12px;
     border-radius: 4px;
     background: var(--bg-raised);

@@ -23,7 +23,9 @@ export type GameAction =
   | { type: "queue_clear" }
   | { type: "queue_load"; entries: QueueEntry[] }
   | { type: "save_queue"; name: string }
-  | { type: "delete_saved_queue"; name: string };
+  | { type: "delete_saved_queue"; name: string }
+  | { type: "import_save"; state: GameState }
+  | { type: "hard_reset" };
 
 let uidCounter = 0;
 function makeUid(): string {
@@ -87,7 +89,55 @@ function loadEncounteredDisasters(): string[] {
   return [];
 }
 
+const SAVE_KEY = "epoch_save";
+
+function saveGameState(state: GameState): void {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  } catch { /* ignore quota errors */ }
+}
+
+export function loadGameState(): GameState | null {
+  try {
+    const saved = localStorage.getItem(SAVE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return null;
+}
+
+export function exportSave(state: GameState): string {
+  return JSON.stringify(state);
+}
+
+export function validateSave(json: string): GameState | null {
+  try {
+    const parsed = JSON.parse(json);
+    // Basic shape validation
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      parsed.skills &&
+      parsed.run &&
+      typeof parsed.totalRuns === "number" &&
+      Array.isArray(parsed.unlockedActions)
+    ) {
+      return parsed as GameState;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 function createInitialState(): GameState {
+  // Try to restore full game state from auto-save
+  const saved = loadGameState();
+  if (saved) {
+    // If the run was running when we saved, pause it so the player can resume
+    if (saved.run.status === "running") {
+      saved.run.status = "paused";
+    }
+    return saved;
+  }
+
   const skills = loadSkills();
   const unlocked = loadUnlockedActions();
   return {
@@ -227,6 +277,33 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, savedQueues };
     }
 
+    case "import_save": {
+      const imported = action.state;
+      // Pause if it was running
+      if (imported.run.status === "running") {
+        imported.run.status = "paused";
+      }
+      return imported;
+    }
+
+    case "hard_reset": {
+      localStorage.removeItem(SAVE_KEY);
+      localStorage.removeItem("epoch_skills");
+      localStorage.removeItem("epoch_saved_queues");
+      localStorage.removeItem("epoch_total_runs");
+      localStorage.removeItem("epoch_unlocked_actions");
+      localStorage.removeItem("epoch_encountered_disasters");
+      const skills = initialSkills();
+      return {
+        skills,
+        run: createInitialRun(),
+        totalRuns: 0,
+        unlockedActions: [...DEFAULT_UNLOCKED_ACTIONS],
+        savedQueues: [],
+        encounteredDisasters: [],
+      };
+    }
+
     default:
       return state;
   }
@@ -264,6 +341,32 @@ export function useGame() {
       localStorage.setItem("epoch_unlocked_actions", JSON.stringify(state.unlockedActions));
     }
   }, [state.run.status, state.skills, state.unlockedActions]);
+
+  // Auto-save full game state periodically and on tab hide
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  });
+
+  useEffect(() => {
+    const saveInterval = window.setInterval(() => {
+      saveGameState(stateRef.current);
+    }, 5000);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        saveGameState(stateRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(saveInterval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      // Save on unmount too
+      saveGameState(stateRef.current);
+    };
+  }, []);
 
   // Persist encountered disasters
   useEffect(() => {
