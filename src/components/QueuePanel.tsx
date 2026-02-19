@@ -13,10 +13,10 @@ interface QueuePanelProps {
 }
 
 const SKILL_COLORS: Record<string, string> = {
-  farming: "#4a7c3f",
-  building: "#8b6914",
-  research: "#3a5f8a",
-  military: "#8a3a3a",
+  farming: "#5e7a53",
+  building: "#867e74",
+  research: "#527a8c",
+  military: "#8b5555",
 };
 
 const SKILL_ICONS: Record<string, string> = {

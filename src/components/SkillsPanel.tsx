@@ -6,10 +6,10 @@ interface SkillsPanelProps {
 }
 
 const SKILL_META: { id: SkillName; name: string; color: string }[] = [
-  { id: "farming", name: "Farming", color: "#4a7c3f" },
-  { id: "building", name: "Building", color: "#8b6914" },
-  { id: "research", name: "Research", color: "#3a5f8a" },
-  { id: "military", name: "Military", color: "#8a3a3a" },
+  { id: "farming", name: "Farming", color: "#5e7a53" },
+  { id: "building", name: "Building", color: "#867e74" },
+  { id: "research", name: "Research", color: "#527a8c" },
+  { id: "military", name: "Military", color: "#8b5555" },
 ];
 
 export function SkillsPanel({ skills }: SkillsPanelProps) {

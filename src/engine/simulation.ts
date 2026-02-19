@@ -27,8 +27,8 @@ const INITIAL_FOOD_STORAGE = 200;
 const SPOILAGE_RATE = 0.02; // 2% of excess food spoils per tick
 
 export const DISASTERS: DisasterInfo[] = [
-  { id: "raider", name: "Raider Era", year: RAIDER_YEAR, color: "#8a3a3a" },
-  { id: "winter", name: "Great Cold", year: WINTER_START, color: "#6aa8d0" },
+  { id: "raider", name: "Raider Era", year: RAIDER_YEAR, color: "#8b5555" },
+  { id: "winter", name: "Great Cold", year: WINTER_START, color: "#7a9aad" },
 ];
 
 export function createInitialResources(): Resources {
