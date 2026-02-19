@@ -1,26 +1,51 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useGame } from "./hooks/useGame.ts";
 import { QueuePanel } from "./components/QueuePanel.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { SkillsPanel } from "./components/SkillsPanel.tsx";
 import { Controls } from "./components/Controls.tsx";
-import { EventLog } from "./components/EventLog.tsx";
+import { EventModal } from "./components/EventModal.tsx";
+import { RunSummaryModal } from "./components/RunSummaryModal.tsx";
+import { LogModal } from "./components/LogModal.tsx";
 
 function App() {
   const { state, dispatch } = useGame();
   const [skillsOpen, setSkillsOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  const [summaryDismissedAtRun, setSummaryDismissedAtRun] = useState(-1);
+
+  const isEnded = state.run.status === "collapsed" || state.run.status === "victory";
+  const showRunSummary = isEnded && state.totalRuns !== summaryDismissedAtRun;
+
+  const pendingEvent = state.run.pendingEvents[0] ?? null;
+
+  const handleDismissEvent = useCallback(() => {
+    dispatch({ type: "dismiss_event" });
+  }, [dispatch]);
+
+  const handleDismissRunSummary = useCallback(() => {
+    setSummaryDismissedAtRun(state.totalRuns);
+  }, [state.totalRuns]);
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>Epoch</h1>
         <span className="app-subtitle">Civilization Loop Strategy</span>
-        <button
-          className="mobile-skills-btn"
-          onClick={() => setSkillsOpen(true)}
-        >
-          Skills
-        </button>
+        <div className="header-buttons">
+          <button
+            className="header-btn"
+            onClick={() => setLogOpen(true)}
+          >
+            Log
+          </button>
+          <button
+            className="header-btn mobile-skills-btn"
+            onClick={() => setSkillsOpen(true)}
+          >
+            Skills
+          </button>
+        </div>
       </header>
 
       <ResourceBar
@@ -42,9 +67,31 @@ function App() {
         </div>
         <div className="main-sidebar">
           <SkillsPanel skills={state.skills} />
-          <EventLog log={state.run.log} />
         </div>
       </main>
+
+      {/* Event popup modal */}
+      {pendingEvent && (
+        <EventModal event={pendingEvent} onDismiss={handleDismissEvent} />
+      )}
+
+      {/* Run summary modal (collapse/victory) */}
+      {showRunSummary && (state.run.status === "collapsed" || state.run.status === "victory") && (
+        <RunSummaryModal
+          run={state.run}
+          skills={state.skills}
+          skillsAtRunStart={state.skillsAtRunStart}
+          lastRunYear={state.lastRunYear}
+          totalRuns={state.totalRuns + 1}
+          autoRestarting={state.run.status === "collapsed" && state.run.autoRestart}
+          onDismiss={handleDismissRunSummary}
+        />
+      )}
+
+      {/* Log modal */}
+      {logOpen && (
+        <LogModal log={state.run.log} onClose={() => setLogOpen(false)} />
+      )}
 
       {/* Skills modal for mobile */}
       {skillsOpen && (

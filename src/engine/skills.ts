@@ -13,7 +13,7 @@ export function xpToNextLevel(skill: SkillState): number {
 }
 
 export function addXp(skill: SkillState, amount: number): SkillState {
-  let xp = skill.xp + amount;
+  const xp = skill.xp + amount;
   let level = skill.level;
   while (xp >= xpForLevel(level + 1)) {
     level++;
