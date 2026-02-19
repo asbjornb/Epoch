@@ -79,6 +79,14 @@ function computeSkillUnlocks(current: ActionId[], skills: GameState["skills"]): 
   return updated;
 }
 
+function loadEncounteredDisasters(): string[] {
+  try {
+    const saved = localStorage.getItem("epoch_encountered_disasters");
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return [];
+}
+
 function createInitialState(): GameState {
   const skills = loadSkills();
   const unlocked = loadUnlockedActions();
@@ -88,6 +96,7 @@ function createInitialState(): GameState {
     totalRuns: loadTotalRuns(),
     unlockedActions: computeSkillUnlocks(unlocked, skills),
     savedQueues: loadSavedQueues(),
+    encounteredDisasters: loadEncounteredDisasters(),
   };
 }
 
@@ -255,6 +264,11 @@ export function useGame() {
       localStorage.setItem("epoch_unlocked_actions", JSON.stringify(state.unlockedActions));
     }
   }, [state.run.status, state.skills, state.unlockedActions]);
+
+  // Persist encountered disasters
+  useEffect(() => {
+    localStorage.setItem("epoch_encountered_disasters", JSON.stringify(state.encounteredDisasters));
+  }, [state.encounteredDisasters]);
 
   // Auto-restart on collapse
   useEffect(() => {

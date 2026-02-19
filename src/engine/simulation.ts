@@ -12,6 +12,8 @@ import {
   getSkillOutputMultiplier,
 } from "./skills.ts";
 
+import type { DisasterInfo } from "../types/game.ts";
+
 const FOOD_PER_POP = 1;
 const WINTER_FOOD_PER_POP = 2; // doubled consumption during Great Cold
 const POP_GROWTH_THRESHOLD = 20; // surplus food needed for pop growth
@@ -22,6 +24,11 @@ const WINTER_END = 5500;
 const INITIAL_MAX_POP = 8;
 const INITIAL_FOOD_STORAGE = 200;
 const SPOILAGE_RATE = 0.02; // 2% of excess food spoils per tick
+
+export const DISASTERS: DisasterInfo[] = [
+  { id: "raider", name: "Raider Era", year: RAIDER_YEAR, color: "#8a3a3a" },
+  { id: "winter", name: "Great Cold", year: WINTER_START, color: "#6aa8d0" },
+];
 
 export function createInitialResources(): Resources {
   return {
@@ -255,7 +262,15 @@ export function tick(state: GameState): GameState {
   run.resources = resources;
   run.log = log;
 
-  return { ...state, run, skills };
+  // Track encountered disasters
+  let encounteredDisasters = state.encounteredDisasters;
+  for (const d of DISASTERS) {
+    if (run.year >= d.year && !encounteredDisasters.includes(d.id)) {
+      encounteredDisasters = [...encounteredDisasters, d.id];
+    }
+  }
+
+  return { ...state, run, skills, encounteredDisasters };
 }
 
 function applyActionPerTick(
