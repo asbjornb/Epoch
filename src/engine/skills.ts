@@ -4,8 +4,8 @@ const XP_BASE = 100;
 const XP_EXPONENT = 1.5;
 
 export function xpForLevel(level: number): number {
-  if (level <= 1) return 0;
-  return Math.floor(XP_BASE * Math.pow(level - 1, XP_EXPONENT));
+  if (level <= 0) return 0;
+  return Math.floor(XP_BASE * Math.pow(level, XP_EXPONENT));
 }
 
 export function xpToNextLevel(skill: SkillState): number {
@@ -32,10 +32,10 @@ export function getSkillOutputMultiplier(level: number): number {
 
 export function initialSkills(): Skills {
   return {
-    farming: { level: 1, xp: 0 },
-    building: { level: 1, xp: 0 },
-    research: { level: 1, xp: 0 },
-    military: { level: 1, xp: 0 },
+    farming: { level: 0, xp: 0 },
+    building: { level: 0, xp: 0 },
+    research: { level: 0, xp: 0 },
+    military: { level: 0, xp: 0 },
   };
 }
 
