@@ -320,11 +320,11 @@ function applyActionPerTick(
   switch (actionId) {
     case "farm":
       if (!isWinter) {
-        resources.food += Math.floor(2 * outputMult);
+        resources.food += 2 * outputMult;
       }
       break;
     case "gather_materials":
-      resources.materials += Math.floor(1 * outputMult);
+      resources.materials += 1 * outputMult;
       break;
     case "train_militia":
       resources.militaryStrength += 0.2 * outputMult;
@@ -335,9 +335,9 @@ function applyActionPerTick(
     case "preserve_food":
       // Produces food even in winter (at reduced rate when not winter)
       if (isWinter) {
-        resources.food += Math.floor(1 * outputMult);
+        resources.food += 1 * outputMult;
       } else {
-        resources.food += Math.max(1, Math.floor(0.5 * outputMult));
+        resources.food += 0.5 * outputMult;
       }
       break;
   }
