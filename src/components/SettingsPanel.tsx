@@ -7,9 +7,10 @@ interface SettingsPanelProps {
   state: GameState;
   dispatch: React.Dispatch<GameAction>;
   onClose: () => void;
+  wakeLock?: { supported: boolean; enabled: boolean; active: boolean; toggle: () => void };
 }
 
-export function SettingsPanel({ state, dispatch, onClose }: SettingsPanelProps) {
+export function SettingsPanel({ state, dispatch, onClose, wakeLock }: SettingsPanelProps) {
   const [importText, setImportText] = useState("");
   const [feedback, setFeedback] = useState<{ msg: string; type: "success" | "danger" } | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -97,6 +98,27 @@ export function SettingsPanel({ state, dispatch, onClose }: SettingsPanelProps) 
         {feedback && (
           <div className={`settings-feedback settings-feedback-${feedback.type}`}>
             {feedback.msg}
+          </div>
+        )}
+
+        {/* Keep Screen On */}
+        {wakeLock?.supported && (
+          <div className="settings-section">
+            <div className="settings-row">
+              <label className="auto-restart-toggle">
+                <input
+                  type="checkbox"
+                  checked={wakeLock.enabled}
+                  onChange={wakeLock.toggle}
+                />
+                <span className="auto-restart-label">Keep screen on</span>
+              </label>
+              {wakeLock.enabled && (
+                <span className="settings-wake-status">
+                  {wakeLock.active ? "Active" : "Inactive"}
+                </span>
+              )}
+            </div>
           </div>
         )}
 
