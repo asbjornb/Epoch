@@ -56,18 +56,16 @@ function ActionPalette({
             <button
               key={a.id}
               className="palette-action"
-              style={{ borderLeftColor: SKILL_COLORS[a.skill] }}
+              style={{ borderTopColor: SKILL_COLORS[a.skill] }}
               onClick={() => dispatch({ type: "queue_add", actionId: a.id })}
               title={a.description}
             >
               <span className="palette-action-icon">{SKILL_ICONS[a.skill]}</span>
               <span className="palette-action-name">{a.name}</span>
-              <span className="palette-action-meta">
-                <span className="palette-action-dur">{dur}y</span>
-                {a.materialCost && (
-                  <span className="palette-action-cost">{a.materialCost}m</span>
-                )}
-              </span>
+              <span className="palette-action-dur">{dur} years</span>
+              {a.materialCost && (
+                <span className="palette-action-cost">{a.materialCost} materials</span>
+              )}
             </button>
           );
         })}
@@ -117,7 +115,7 @@ function QueueItem({
           <span className="queue-item-repeat">{repeatLabel}</span>
           {isActive && (
             <span className="queue-item-timer">
-              {progress}/{duration}y
+              {progress}/{duration} years
             </span>
           )}
         </div>
