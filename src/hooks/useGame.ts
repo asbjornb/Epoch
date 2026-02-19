@@ -3,6 +3,7 @@ import type {
   GameState,
   QueueEntry,
   ActionId,
+  RunHistoryEntry,
 } from "../types/game.ts";
 import { ACTION_DEFS } from "../types/actions.ts";
 import { initialSkills, isActionUnlocked } from "../engine/skills.ts";
@@ -103,6 +104,14 @@ function loadLastRunYear(): number {
   return 0;
 }
 
+function loadRunHistory(): RunHistoryEntry[] {
+  try {
+    const saved = localStorage.getItem("epoch_run_history");
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return [];
+}
+
 function cloneSkills(skills: GameState["skills"]): GameState["skills"] {
   return {
     farming: { ...skills.farming },
@@ -173,6 +182,7 @@ function createInitialState(): GameState {
     autoDismissEventTypes: loadAutoDismissEventTypes(),
     lastRunYear: loadLastRunYear(),
     skillsAtRunStart: cloneSkills(skills),
+    runHistory: loadRunHistory(),
   };
 }
 
@@ -214,6 +224,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const lastRunYear = state.run.year;
       localStorage.setItem("epoch_last_run_year", String(lastRunYear));
 
+      // Capture run history entry before resetting
+      let outcome: RunHistoryEntry["outcome"] = "abandoned";
+      if (state.run.status === "collapsed") outcome = "collapsed";
+      else if (state.run.status === "victory") outcome = "victory";
+      const historyEntry: RunHistoryEntry = {
+        runNumber: totalRuns,
+        year: state.run.year,
+        outcome,
+        collapseReason: state.run.collapseReason,
+        queue: state.run.queue.map((e) => e.actionId),
+        resources: { ...state.run.resources },
+      };
+      const runHistory = [historyEntry, ...state.runHistory].slice(0, 10);
+      localStorage.setItem("epoch_run_history", JSON.stringify(runHistory));
+
       // After first run, unlock the other three starting actions
       let unlockedActions = state.unlockedActions;
       if (state.totalRuns === 0) {
@@ -239,6 +264,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         totalRuns,
         unlockedActions,
         lastRunYear,
+        runHistory,
       };
     }
 
@@ -348,6 +374,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       localStorage.removeItem("epoch_seen_event_types");
       localStorage.removeItem("epoch_auto_dismiss_event_types");
       localStorage.removeItem("epoch_last_run_year");
+      localStorage.removeItem("epoch_run_history");
       const skills = initialSkills();
       return {
         skills,
@@ -359,6 +386,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         autoDismissEventTypes: [],
         lastRunYear: 0,
         skillsAtRunStart: cloneSkills(skills),
+        runHistory: [],
       };
     }
 

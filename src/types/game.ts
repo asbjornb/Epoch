@@ -82,6 +82,15 @@ export interface DisasterInfo {
   color: string;
 }
 
+export interface RunHistoryEntry {
+  runNumber: number;
+  year: number;
+  outcome: "collapsed" | "victory" | "abandoned";
+  collapseReason?: string;
+  queue: ActionId[];
+  resources: Resources;
+}
+
 export interface GameState {
   skills: Skills;
   run: RunState;
@@ -92,4 +101,5 @@ export interface GameState {
   autoDismissEventTypes: string[];
   lastRunYear: number;
   skillsAtRunStart: Skills;
+  runHistory: RunHistoryEntry[];
 }

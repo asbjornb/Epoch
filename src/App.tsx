@@ -106,7 +106,7 @@ function App() {
 
       {/* Log modal */}
       {logOpen && (
-        <LogModal log={state.run.log} onClose={() => setLogOpen(false)} />
+        <LogModal log={state.run.log} runHistory={state.runHistory} onClose={() => setLogOpen(false)} />
       )}
 
       {/* Skills modal for mobile */}
