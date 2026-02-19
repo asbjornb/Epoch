@@ -213,7 +213,7 @@ Each chapter:
 
 ### Must Include
 
-- 5 skills
+- 4 skills
 - 6-8 actions
 - 1 raider event
 - 1 winter event
