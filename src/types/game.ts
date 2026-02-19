@@ -56,12 +56,23 @@ export interface RunState {
   log: LogEntry[];
   collapseReason?: string;
   autoRestart: boolean;
+  pendingEvents: EventPopup[];
+  pausedByEvent: boolean;
 }
 
 export interface LogEntry {
   year: number;
   message: string;
   type: "info" | "warning" | "danger" | "success";
+}
+
+export interface EventPopup {
+  eventId: string;
+  title: string;
+  message: string;
+  type: "warning" | "success" | "danger";
+  year: number;
+  firstTime: boolean;
 }
 
 export interface DisasterInfo {
@@ -77,4 +88,7 @@ export interface GameState {
   totalRuns: number;
   unlockedActions: ActionId[];
   encounteredDisasters: string[];
+  seenEventTypes: string[];
+  lastRunYear: number;
+  skillsAtRunStart: Skills;
 }
