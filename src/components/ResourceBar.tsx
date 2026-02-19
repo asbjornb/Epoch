@@ -52,14 +52,18 @@ export function ResourceBar({ resources, year, maxYear, encounteredDisasters }: 
           color="#5a6a7a"
           extra={`/ ${resources.maxPopulation}`}
         />
-        <ResourceItem label="Materials" value={Math.floor(resources.materials)} icon="🪨" color="#8b6914" />
-        <ResourceItem
-          label="Defense"
-          value={Math.floor(resources.militaryStrength + resources.wallDefense)}
-          icon="⚔"
-          color="#8a3a3a"
-          extra={resources.wallDefense > 0 ? `(${Math.floor(resources.militaryStrength)}+${Math.floor(resources.wallDefense)})` : undefined}
-        />
+        {resources.materials > 0 && (
+          <ResourceItem label="Materials" value={Math.floor(resources.materials)} icon="🪨" color="#8b6914" />
+        )}
+        {resources.militaryStrength + resources.wallDefense > 0 && (
+          <ResourceItem
+            label="Defense"
+            value={Math.floor(resources.militaryStrength + resources.wallDefense)}
+            icon="⚔"
+            color="#8a3a3a"
+            extra={resources.wallDefense > 0 ? `(${Math.floor(resources.militaryStrength)}+${Math.floor(resources.wallDefense)})` : undefined}
+          />
+        )}
         {resources.techLevel > 0 && (
           <ResourceItem
             label="Tech"
