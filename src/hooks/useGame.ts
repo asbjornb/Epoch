@@ -3,7 +3,6 @@ import type {
   GameState,
   QueueEntry,
   ActionId,
-  SavedQueue,
 } from "../types/game.ts";
 import { ACTION_DEFS } from "../types/actions.ts";
 import { initialSkills, isActionUnlocked } from "../engine/skills.ts";
@@ -20,10 +19,7 @@ export type GameAction =
   | { type: "queue_remove"; uid: string }
   | { type: "queue_move"; uid: string; direction: "up" | "down" }
   | { type: "queue_set_repeat"; uid: string; repeat: number }
-  | { type: "queue_clear" }
-  | { type: "queue_load"; entries: QueueEntry[] }
-  | { type: "save_queue"; name: string }
-  | { type: "delete_saved_queue"; name: string };
+  | { type: "queue_clear" };
 
 let uidCounter = 0;
 function makeUid(): string {
@@ -36,14 +32,6 @@ function loadSkills(): GameState["skills"] {
     if (saved) return JSON.parse(saved);
   } catch { /* ignore */ }
   return initialSkills();
-}
-
-function loadSavedQueues(): SavedQueue[] {
-  try {
-    const saved = localStorage.getItem("epoch_saved_queues");
-    if (saved) return JSON.parse(saved);
-  } catch { /* ignore */ }
-  return [];
 }
 
 function loadTotalRuns(): number {
@@ -95,7 +83,6 @@ function createInitialState(): GameState {
     run: createInitialRun(),
     totalRuns: loadTotalRuns(),
     unlockedActions: computeSkillUnlocks(unlocked, skills),
-    savedQueues: loadSavedQueues(),
     encounteredDisasters: loadEncounteredDisasters(),
   };
 }
@@ -204,27 +191,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case "queue_clear": {
       const run = { ...state.run, queue: [], currentQueueIndex: 0, currentActionProgress: 0 };
       return { ...state, run };
-    }
-
-    case "queue_load": {
-      const queue = action.entries.map((e) => ({ ...e, uid: makeUid() }));
-      const run = { ...state.run, queue, currentQueueIndex: 0, currentActionProgress: 0 };
-      return { ...state, run };
-    }
-
-    case "save_queue": {
-      const savedQueues = [
-        ...state.savedQueues.filter((q) => q.name !== action.name),
-        { name: action.name, entries: state.run.queue.map((e) => ({ ...e })) },
-      ];
-      localStorage.setItem("epoch_saved_queues", JSON.stringify(savedQueues));
-      return { ...state, savedQueues };
-    }
-
-    case "delete_saved_queue": {
-      const savedQueues = state.savedQueues.filter((q) => q.name !== action.name);
-      localStorage.setItem("epoch_saved_queues", JSON.stringify(savedQueues));
-      return { ...state, savedQueues };
     }
 
     default:
