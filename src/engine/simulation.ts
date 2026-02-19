@@ -116,10 +116,10 @@ export function tick(state: GameState): GameState {
   // Population starvation
   if (resources.food < 0) {
     const deaths = Math.min(
-      resources.population - 1,
+      resources.population,
       Math.ceil(Math.abs(resources.food) / 2),
     );
-    resources.population = Math.max(1, resources.population - deaths);
+    resources.population = Math.max(0, resources.population - deaths);
     resources.food = 0;
     if (deaths > 0) {
       log.push({
@@ -241,7 +241,7 @@ export function tick(state: GameState): GameState {
   // Check collapse from depopulation
   if (resources.population <= 0) {
     run.status = "collapsed";
-    run.collapseReason = "All population perished.";
+    run.collapseReason = "Your civilization starved. All population perished.";
     log.push({
       year: run.year,
       message: run.collapseReason,
