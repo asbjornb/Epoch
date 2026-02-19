@@ -1,0 +1,51 @@
+import type { Resources } from "../types/game.ts";
+
+interface ResourceBarProps {
+  resources: Resources;
+  year: number;
+  maxYear: number;
+}
+
+export function ResourceBar({ resources, year, maxYear }: ResourceBarProps) {
+  const yearPct = (year / maxYear) * 100;
+
+  return (
+    <div className="resource-bar">
+      <div className="year-display">
+        <span className="year-label">Year</span>
+        <span className="year-value">{year.toLocaleString()}</span>
+        <div className="year-progress-track">
+          <div className="year-progress-fill" style={{ width: `${yearPct}%` }} />
+          <div className="year-marker raider" style={{ left: "20%" }} title="Raider Era (Y2000)" />
+          <div className="year-marker winter" style={{ left: "50%" }} title="Great Cold (Y5000)" />
+        </div>
+      </div>
+      <div className="resources">
+        <ResourceItem label="Food" value={Math.floor(resources.food)} icon="🌾" color="#4a7c3f" />
+        <ResourceItem label="Pop" value={resources.population} icon="👥" color="#5a6a7a" />
+        <ResourceItem label="Materials" value={Math.floor(resources.materials)} icon="🪨" color="#8b6914" />
+        <ResourceItem label="Military" value={Math.floor(resources.militaryStrength)} icon="⚔" color="#8a3a3a" />
+      </div>
+    </div>
+  );
+}
+
+function ResourceItem({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon: string;
+  color: string;
+}) {
+  return (
+    <div className="resource-item" style={{ borderBottomColor: color }}>
+      <span className="resource-icon">{icon}</span>
+      <span className="resource-value">{value}</span>
+      <span className="resource-label">{label}</span>
+    </div>
+  );
+}

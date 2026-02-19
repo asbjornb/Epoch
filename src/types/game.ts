@@ -1,0 +1,70 @@
+export type SkillName = "farming" | "building" | "research" | "military";
+
+export interface SkillState {
+  level: number;
+  xp: number;
+}
+
+export type Skills = Record<SkillName, SkillState>;
+
+export interface Resources {
+  food: number;
+  population: number;
+  materials: number;
+  militaryStrength: number;
+}
+
+export type ActionId =
+  | "farm"
+  | "build_hut"
+  | "build_granary"
+  | "train_militia"
+  | "research_tools"
+  | "gather_materials"
+  | "scout";
+
+export interface ActionDef {
+  id: ActionId;
+  name: string;
+  description: string;
+  skill: SkillName;
+  baseDuration: number;
+  unlockLevel: number;
+}
+
+export interface QueueEntry {
+  uid: string;
+  actionId: ActionId;
+  repeat: number; // 1 = run once, -1 = repeat forever
+}
+
+export interface RunState {
+  year: number;
+  maxYear: number;
+  resources: Resources;
+  queue: QueueEntry[];
+  currentQueueIndex: number;
+  currentActionProgress: number; // ticks into current action
+  status: "idle" | "running" | "paused" | "collapsed" | "victory";
+  speed: number; // ticks per second
+  log: LogEntry[];
+  collapseReason?: string;
+}
+
+export interface LogEntry {
+  year: number;
+  message: string;
+  type: "info" | "warning" | "danger" | "success";
+}
+
+export interface GameState {
+  skills: Skills;
+  run: RunState;
+  totalRuns: number;
+  savedQueues: SavedQueue[];
+}
+
+export interface SavedQueue {
+  name: string;
+  entries: QueueEntry[];
+}
