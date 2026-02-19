@@ -14,7 +14,6 @@ export type GameAction =
   | { type: "pause_run" }
   | { type: "resume_run" }
   | { type: "reset_run" }
-  | { type: "set_speed"; speed: number }
   | { type: "toggle_auto_restart" }
   | { type: "queue_add"; actionId: ActionId; repeat?: number }
   | { type: "queue_remove"; uid: string }
@@ -88,21 +87,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       localStorage.setItem("epoch_skills", JSON.stringify(state.skills));
       const totalRuns = state.totalRuns + 1;
       localStorage.setItem("epoch_total_runs", String(totalRuns));
-      // Preserve queue and speed from previous run, plus autoRestart setting
+      // Preserve queue and autoRestart setting from previous run
       const newRun = createInitialRun();
       newRun.queue = state.run.queue.map((e) => ({ ...e }));
-      newRun.speed = state.run.speed;
       newRun.autoRestart = state.run.autoRestart;
       return {
         ...state,
         run: newRun,
         totalRuns,
       };
-    }
-
-    case "set_speed": {
-      const run = { ...state.run, speed: action.speed };
-      return { ...state, run };
     }
 
     case "toggle_auto_restart": {
@@ -192,15 +185,14 @@ export function useGame() {
   useEffect(() => {
     if (state.run.status === "running") {
       stopInterval();
-      const ms = Math.max(10, Math.floor(1000 / state.run.speed));
       intervalRef.current = window.setInterval(() => {
         dispatch({ type: "tick" });
-      }, ms);
+      }, 1000);
     } else {
       stopInterval();
     }
     return stopInterval;
-  }, [state.run.status, state.run.speed, stopInterval]);
+  }, [state.run.status, stopInterval]);
 
   // Auto-save skills on collapse/victory
   useEffect(() => {

@@ -53,7 +53,6 @@ export interface RunState {
   currentQueueIndex: number;
   currentActionProgress: number; // ticks into current action
   status: "idle" | "running" | "paused" | "collapsed" | "victory";
-  speed: number; // ticks per second
   log: LogEntry[];
   collapseReason?: string;
   autoRestart: boolean;

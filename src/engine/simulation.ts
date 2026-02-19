@@ -45,7 +45,6 @@ export function createInitialRun(): RunState {
     currentQueueIndex: 0,
     currentActionProgress: 0,
     status: "idle",
-    speed: 1,
     log: [],
     autoRestart: true,
   };
