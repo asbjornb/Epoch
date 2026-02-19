@@ -17,7 +17,6 @@ import type { DisasterInfo } from "../types/game.ts";
 
 const FOOD_PER_POP = 1;
 const WINTER_FOOD_PER_POP = 2; // doubled consumption during Great Cold
-const POP_GROWTH_THRESHOLD = 20; // surplus food needed for pop growth
 const RAIDER_YEAR = 1500;
 const RAIDER_STRENGTH_REQUIRED = 30;
 const WINTER_START = 4000;
@@ -141,14 +140,6 @@ export function tick(state: GameState): GameState {
     resources.food -= spoiled;
   }
 
-  // Population growth (not during winter, respects housing cap)
-  if (
-    !isWinter &&
-    resources.population < resources.maxPopulation &&
-    resources.food > resources.population * FOOD_PER_POP + POP_GROWTH_THRESHOLD
-  ) {
-    resources.population++;
-  }
 
   // Combined output multipliers from tech and population
   const techMult = getTechMultiplier(resources.techLevel);
