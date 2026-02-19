@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useGame } from "./hooks/useGame.ts";
+import { useWakeLock } from "./hooks/useWakeLock.ts";
 import { QueuePanel } from "./components/QueuePanel.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { SkillsPanel } from "./components/SkillsPanel.tsx";
@@ -10,6 +11,7 @@ import { SettingsPanel } from "./components/SettingsPanel.tsx";
 
 function App() {
   const { state, dispatch } = useGame();
+  const wakeLock = useWakeLock();
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
@@ -123,6 +125,7 @@ function App() {
           state={state}
           dispatch={dispatch}
           onClose={() => setSettingsOpen(false)}
+          wakeLock={wakeLock}
         />
       )}
     </div>

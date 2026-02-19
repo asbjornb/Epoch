@@ -1648,6 +1648,12 @@ h1, h2, h3 {
   color: var(--danger);
 }
 
+.settings-wake-status {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
 .settings-section {
   display: flex;
   flex-direction: column;
