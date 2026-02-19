@@ -68,6 +68,7 @@ export interface GameState {
   skills: Skills;
   run: RunState;
   totalRuns: number;
+  unlockedActions: ActionId[];
   savedQueues: SavedQueue[];
 }
 

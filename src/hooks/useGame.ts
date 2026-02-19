@@ -5,7 +5,8 @@ import type {
   ActionId,
   SavedQueue,
 } from "../types/game.ts";
-import { initialSkills } from "../engine/skills.ts";
+import { ACTION_DEFS } from "../types/actions.ts";
+import { initialSkills, isActionUnlocked } from "../engine/skills.ts";
 import { createInitialRun, tick } from "../engine/simulation.ts";
 
 export type GameAction =
@@ -53,19 +54,55 @@ function loadTotalRuns(): number {
   return 0;
 }
 
+const DEFAULT_UNLOCKED_ACTIONS: ActionId[] = ["farm"];
+
+function loadUnlockedActions(): ActionId[] {
+  try {
+    const saved = localStorage.getItem("epoch_unlocked_actions");
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return [...DEFAULT_UNLOCKED_ACTIONS];
+}
+
+/** Check if any new actions should be unlocked based on current skills */
+function computeSkillUnlocks(current: ActionId[], skills: GameState["skills"]): ActionId[] {
+  let updated = current;
+  for (const def of ACTION_DEFS) {
+    if (!updated.includes(def.id) && isActionUnlocked(skills, def.skill, def.unlockLevel)) {
+      // Only auto-unlock skill-gated actions (unlockLevel > 0) when skill level is met
+      if (def.unlockLevel > 0) {
+        updated = updated === current ? [...current] : updated;
+        updated.push(def.id);
+      }
+    }
+  }
+  return updated;
+}
+
 function createInitialState(): GameState {
+  const skills = loadSkills();
+  const unlocked = loadUnlockedActions();
   return {
-    skills: loadSkills(),
+    skills,
     run: createInitialRun(),
     totalRuns: loadTotalRuns(),
+    unlockedActions: computeSkillUnlocks(unlocked, skills),
     savedQueues: loadSavedQueues(),
   };
 }
 
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
-    case "tick":
-      return tick(state);
+    case "tick": {
+      const tickedState = tick(state);
+      // Check if skills unlocked new actions
+      const newUnlocks = computeSkillUnlocks(tickedState.unlockedActions, tickedState.skills);
+      if (newUnlocks !== tickedState.unlockedActions) {
+        localStorage.setItem("epoch_unlocked_actions", JSON.stringify(newUnlocks));
+        return { ...tickedState, unlockedActions: newUnlocks };
+      }
+      return tickedState;
+    }
 
     case "start_run": {
       const run = { ...state.run, status: "running" as const };
@@ -87,6 +124,22 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       localStorage.setItem("epoch_skills", JSON.stringify(state.skills));
       const totalRuns = state.totalRuns + 1;
       localStorage.setItem("epoch_total_runs", String(totalRuns));
+
+      // After first run, unlock the other three starting actions
+      let unlockedActions = state.unlockedActions;
+      if (state.totalRuns === 0) {
+        const firstRunUnlocks: ActionId[] = ["gather_materials", "train_militia", "research_tools"];
+        unlockedActions = [...unlockedActions];
+        for (const id of firstRunUnlocks) {
+          if (!unlockedActions.includes(id)) {
+            unlockedActions.push(id);
+          }
+        }
+      }
+      // Also check skill-based unlocks
+      unlockedActions = computeSkillUnlocks(unlockedActions, state.skills);
+      localStorage.setItem("epoch_unlocked_actions", JSON.stringify(unlockedActions));
+
       // Preserve queue and autoRestart setting from previous run
       const newRun = createInitialRun();
       newRun.queue = state.run.queue.map((e) => ({ ...e }));
@@ -95,6 +148,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         run: newRun,
         totalRuns,
+        unlockedActions,
       };
     }
 
@@ -194,12 +248,13 @@ export function useGame() {
     return stopInterval;
   }, [state.run.status, stopInterval]);
 
-  // Auto-save skills on collapse/victory
+  // Auto-save skills and unlocks on collapse/victory
   useEffect(() => {
     if (state.run.status === "collapsed" || state.run.status === "victory") {
       localStorage.setItem("epoch_skills", JSON.stringify(state.skills));
+      localStorage.setItem("epoch_unlocked_actions", JSON.stringify(state.unlockedActions));
     }
-  }, [state.run.status, state.skills]);
+  }, [state.run.status, state.skills, state.unlockedActions]);
 
   // Auto-restart on collapse
   useEffect(() => {

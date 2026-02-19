@@ -35,18 +35,18 @@ function ActionPalette({
   state: GameState;
   dispatch: React.Dispatch<GameAction>;
 }) {
-  const available = ACTION_DEFS.filter((a) =>
-    isActionUnlocked(state.skills, a.skill, a.unlockLevel),
-  );
-  const locked = ACTION_DEFS.filter(
-    (a) => !isActionUnlocked(state.skills, a.skill, a.unlockLevel),
+  // Only show actions that are both in unlockedActions and meet skill level requirements
+  const visible = ACTION_DEFS.filter(
+    (a) =>
+      state.unlockedActions.includes(a.id) &&
+      isActionUnlocked(state.skills, a.skill, a.unlockLevel),
   );
 
   return (
     <div className="action-palette">
       <div className="palette-label">Actions</div>
       <div className="palette-grid">
-        {available.map((a) => {
+        {visible.map((a) => {
           const dur = Math.max(
             1,
             Math.round(
@@ -73,20 +73,6 @@ function ActionPalette({
             </button>
           );
         })}
-        {locked.map((a) => (
-          <button
-            key={a.id}
-            className="palette-action locked"
-            disabled
-            title={`Requires ${a.skill} level ${a.unlockLevel}`}
-          >
-            <span className="palette-action-icon">🔒</span>
-            <span className="palette-action-name">{a.name}</span>
-            <span className="palette-action-meta">
-              <span className="palette-action-dur">Lv{a.unlockLevel}</span>
-            </span>
-          </button>
-        ))}
       </div>
     </div>
   );
