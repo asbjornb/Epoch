@@ -37,7 +37,6 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Epoch</h1>
-        <span className="app-subtitle">Civilization Loop Strategy</span>
         <div className="header-buttons">
           <button
             className="header-btn"
