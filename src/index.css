@@ -91,11 +91,6 @@ h1, h2, h3 {
   text-transform: uppercase;
 }
 
-.app-subtitle {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  flex: 1;
-}
 
 .header-buttons {
   display: flex;
