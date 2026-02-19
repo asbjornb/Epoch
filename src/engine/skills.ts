@@ -1,7 +1,7 @@
 import type { SkillName, Skills, SkillState } from "../types/game.ts";
 
 const XP_BASE = 100;
-const XP_EXPONENT = 1.5;
+const XP_EXPONENT = 2.0;
 
 export function xpForLevel(level: number): number {
   if (level <= 0) return 0;
