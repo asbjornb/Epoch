@@ -190,7 +190,6 @@ export function tick(state: GameState): GameState {
         // Action complete
         if (run.currentActionProgress >= duration) {
           applyActionCompletion(entry.actionId, resources, outputMult, log, run.year);
-          skills[def.skill] = addXp(skills[def.skill], 5);
           run.currentActionProgress = 0;
           run.currentQueueIndex++;
         }
