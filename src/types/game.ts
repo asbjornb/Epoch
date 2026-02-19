@@ -64,12 +64,20 @@ export interface LogEntry {
   type: "info" | "warning" | "danger" | "success";
 }
 
+export interface DisasterInfo {
+  id: string;
+  name: string;
+  year: number;
+  color: string;
+}
+
 export interface GameState {
   skills: Skills;
   run: RunState;
   totalRuns: number;
   unlockedActions: ActionId[];
   savedQueues: SavedQueue[];
+  encounteredDisasters: string[];
 }
 
 export interface SavedQueue {
