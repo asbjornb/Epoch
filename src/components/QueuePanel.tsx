@@ -9,6 +9,7 @@ import type { GameAction } from "../hooks/useGame.ts";
 
 interface QueuePanelProps {
   state: GameState;
+  totalRuns: number;
   dispatch: React.Dispatch<GameAction>;
 }
 
@@ -172,9 +173,14 @@ function QueueItem({
   );
 }
 
-export function QueuePanel({ state, dispatch }: QueuePanelProps) {
+export function QueuePanel({ state, totalRuns, dispatch }: QueuePanelProps) {
   const { run, skills } = state;
   const queue = run.queue;
+
+  const isIdle = run.status === "idle";
+  const isRunning = run.status === "running";
+  const isPaused = run.status === "paused";
+  const isEnded = run.status === "collapsed" || run.status === "victory";
 
   const getEffectiveDuration = (actionId: ActionId) => {
     const def = getActionDef(actionId);
@@ -199,12 +205,71 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
   return (
     <div className="queue-panel">
       <div className="queue-header">
-        <h2>Queue</h2>
-        <div className="queue-meta">
-          <span className="queue-count">{queue.length} actions</span>
-          <span className="queue-total-years">~{totalYears} years</span>
+        <div className="queue-header-left">
+          <h2>Queue</h2>
+          <div className="queue-meta">
+            <span className="queue-count">{queue.length} actions</span>
+            <span className="queue-total-years">~{totalYears} years</span>
+          </div>
+        </div>
+        <div className="queue-header-right">
+          <span className="run-counter">Run #{totalRuns + 1}</span>
+          <label className="auto-restart-toggle" title="Automatically restart on collapse">
+            <input
+              type="checkbox"
+              checked={run.autoRestart}
+              onChange={() => dispatch({ type: "toggle_auto_restart" })}
+            />
+            <span className="auto-restart-label">Auto</span>
+          </label>
+          {isIdle && (
+            <button
+              className="ctrl-btn primary"
+              onClick={() => dispatch({ type: "start_run" })}
+              disabled={run.queue.length === 0}
+            >
+              Start
+            </button>
+          )}
+          {isRunning && (
+            <button
+              className="ctrl-btn"
+              onClick={() => dispatch({ type: "pause_run" })}
+            >
+              Pause
+            </button>
+          )}
+          {isPaused && (
+            <button
+              className="ctrl-btn primary"
+              onClick={() => dispatch({ type: "resume_run" })}
+            >
+              Resume
+            </button>
+          )}
+          {isEnded && (
+            <button
+              className="ctrl-btn primary"
+              onClick={() => dispatch({ type: "reset_run" })}
+            >
+              New Run
+            </button>
+          )}
         </div>
       </div>
+
+      {isEnded && (
+        <div
+          className={`run-result ${run.status === "victory" ? "victory" : "collapse"}`}
+        >
+          {run.status === "victory"
+            ? "Victory!"
+            : `Collapsed: ${run.collapseReason ?? "Unknown"}`}
+          {run.status === "collapsed" && run.autoRestart && (
+            <span className="auto-restart-notice"> (restarting...)</span>
+          )}
+        </div>
+      )}
 
       <ActionPalette state={state} dispatch={dispatch} />
 

@@ -227,29 +227,7 @@ h1, h2, h3 {
   letter-spacing: 0.06em;
 }
 
-/* ===== Controls ===== */
-.controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-.controls-left {
-  flex-shrink: 0;
-}
-
-.controls-center {
-  flex: 1;
-  text-align: center;
-}
-
-.controls-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
+/* ===== Controls (inline in queue header) ===== */
 
 .ctrl-btn {
   padding: 6px 16px;
@@ -390,18 +368,34 @@ h1, h2, h3 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+}
+
+.queue-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .queue-header h2 {
   font-size: 1.05rem;
   letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
 
 .queue-meta {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   font-size: 0.75rem;
   color: var(--text-dim);
+}
+
+.queue-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 /* Action Palette */
@@ -1590,12 +1584,11 @@ h1, h2, h3 {
     gap: 10px;
   }
 
-  .controls {
+  .queue-header {
     flex-wrap: wrap;
   }
 
-  .controls-center {
-    order: 3;
-    width: 100%;
+  .queue-header-right {
+    gap: 8px;
   }
 }

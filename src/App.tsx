@@ -3,7 +3,6 @@ import { useGame } from "./hooks/useGame.ts";
 import { QueuePanel } from "./components/QueuePanel.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { SkillsPanel } from "./components/SkillsPanel.tsx";
-import { Controls } from "./components/Controls.tsx";
 import { EventModal } from "./components/EventModal.tsx";
 import { RunSummaryModal } from "./components/RunSummaryModal.tsx";
 import { LogModal } from "./components/LogModal.tsx";
@@ -66,15 +65,9 @@ function App() {
         encounteredDisasters={state.encounteredDisasters}
       />
 
-      <Controls
-        run={state.run}
-        totalRuns={state.totalRuns}
-        dispatch={dispatch}
-      />
-
       <main className="app-main">
         <div className="main-queue">
-          <QueuePanel state={state} dispatch={dispatch} />
+          <QueuePanel state={state} totalRuns={state.totalRuns} dispatch={dispatch} />
         </div>
         <div className="main-sidebar">
           <SkillsPanel skills={state.skills} />
