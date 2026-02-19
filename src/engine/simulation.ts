@@ -19,13 +19,20 @@ const RAIDER_YEAR = 2000;
 const RAIDER_STRENGTH_REQUIRED = 30;
 const WINTER_START = 5000;
 const WINTER_END = 5500;
+const INITIAL_MAX_POP = 8;
+const INITIAL_FOOD_STORAGE = 200;
+const SPOILAGE_RATE = 0.02; // 2% of excess food spoils per tick
 
 export function createInitialResources(): Resources {
   return {
     food: 50,
     population: 5,
+    maxPopulation: INITIAL_MAX_POP,
     materials: 0,
     militaryStrength: 0,
+    wallDefense: 0,
+    foodStorage: INITIAL_FOOD_STORAGE,
+    techLevel: 0,
   };
 }
 
@@ -51,27 +58,31 @@ function getEffectiveDuration(
   return Math.max(1, Math.round(baseDuration * getSkillDurationMultiplier(skillLevel)));
 }
 
+/** Tech level gives a 10% output bonus per level */
+function getTechMultiplier(techLevel: number): number {
+  return 1.0 + techLevel * 0.1;
+}
+
+/** Population productivity: gentle scaling, sqrt-based */
+function getPopulationMultiplier(population: number): number {
+  return Math.max(1.0, Math.sqrt(population / 5));
+}
+
 function getCurrentQueueEntry(run: RunState): { entry: QueueEntry; index: number } | null {
   if (run.queue.length === 0) return null;
 
-  // Walk through queue respecting repeat counts
   let queueIdx = 0;
-  let repeatsDone = 0;
 
-  // Reconstruct position from currentQueueIndex which tracks
-  // the logical position (counting repeats)
   let logicalPos = 0;
   for (let i = 0; i < run.queue.length; i++) {
     const entry = run.queue[i];
     const repeats = entry.repeat === -1 ? Infinity : entry.repeat;
     if (logicalPos + repeats > run.currentQueueIndex) {
       queueIdx = i;
-      repeatsDone = run.currentQueueIndex - logicalPos;
       break;
     }
     logicalPos += repeats;
     if (i === run.queue.length - 1) {
-      // Past end of queue: repeat last action
       return { entry: run.queue[run.queue.length - 1], index: run.currentQueueIndex };
     }
   }
@@ -113,10 +124,25 @@ export function tick(state: GameState): GameState {
     }
   }
 
-  // Population growth (not during winter)
-  if (!isWinter && resources.food > resources.population * FOOD_PER_POP + POP_GROWTH_THRESHOLD) {
+  // Food spoilage: food beyond storage cap decays
+  if (resources.food > resources.foodStorage) {
+    const excess = resources.food - resources.foodStorage;
+    const spoiled = Math.ceil(excess * SPOILAGE_RATE);
+    resources.food -= spoiled;
+  }
+
+  // Population growth (not during winter, respects housing cap)
+  if (
+    !isWinter &&
+    resources.population < resources.maxPopulation &&
+    resources.food > resources.population * FOOD_PER_POP + POP_GROWTH_THRESHOLD
+  ) {
     resources.population++;
   }
+
+  // Combined output multipliers from tech and population
+  const techMult = getTechMultiplier(resources.techLevel);
+  const popMult = getPopulationMultiplier(resources.population);
 
   // Process current action
   const current = getCurrentQueueEntry(run);
@@ -126,11 +152,10 @@ export function tick(state: GameState): GameState {
     if (def) {
       const skillLevel = skills[def.skill].level;
       const duration = getEffectiveDuration(def.baseDuration, skillLevel);
-      const outputMult = getSkillOutputMultiplier(skillLevel);
+      const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
 
       // Check material cost at start of action
       if (run.currentActionProgress === 0 && def.materialCost && def.materialCost > resources.materials) {
-        // Not enough materials, skip this action and advance queue
         log.push({
           year: run.year,
           message: `Cannot ${def.name}: need ${def.materialCost} materials (have ${Math.floor(resources.materials)}).`,
@@ -157,28 +182,33 @@ export function tick(state: GameState): GameState {
           applyActionCompletion(entry.actionId, resources, outputMult, log, run.year);
           skills[def.skill] = addXp(skills[def.skill], 5);
           run.currentActionProgress = 0;
-
-          // Advance logical queue position
           run.currentQueueIndex++;
         }
       }
     }
   }
 
-  // Raider event
+  // Raider event - wall defense counts toward total defense
   if (run.year === RAIDER_YEAR) {
-    if (resources.militaryStrength < RAIDER_STRENGTH_REQUIRED) {
+    const totalDefense = resources.militaryStrength + resources.wallDefense;
+    if (totalDefense < RAIDER_STRENGTH_REQUIRED) {
       run.status = "collapsed";
-      run.collapseReason = `Raiders attacked at year ${RAIDER_YEAR}. Military strength ${Math.floor(resources.militaryStrength)} < ${RAIDER_STRENGTH_REQUIRED} required.`;
+      run.collapseReason = `Raiders attacked at year ${RAIDER_YEAR}. Total defense ${Math.floor(totalDefense)} (military ${Math.floor(resources.militaryStrength)} + walls ${Math.floor(resources.wallDefense)}) < ${RAIDER_STRENGTH_REQUIRED} required.`;
       log.push({
         year: run.year,
         message: run.collapseReason,
         type: "danger",
       });
     } else {
+      // Reward for surviving raiders
+      const foodBonus = Math.floor(50 * techMult);
+      const materialBonus = 20;
+      resources.food += foodBonus;
+      resources.materials += materialBonus;
+      skills.military = addXp(skills.military, 50);
       log.push({
         year: run.year,
-        message: "Raiders repelled! Military holds strong.",
+        message: `Raiders repelled! Defense held (${Math.floor(totalDefense)}/${RAIDER_STRENGTH_REQUIRED}). Gained ${foodBonus} food, ${materialBonus} materials, and military XP.`,
         type: "success",
       });
     }
@@ -188,7 +218,7 @@ export function tick(state: GameState): GameState {
   if (run.year === WINTER_START) {
     log.push({
       year: run.year,
-      message: "The Great Cold begins. Farming disabled, food consumption doubled.",
+      message: `The Great Cold begins. Farming disabled, food consumption doubled. Food stored: ${Math.floor(resources.food)}/${Math.floor(resources.foodStorage)}.`,
       type: "warning",
     });
   }
@@ -250,6 +280,14 @@ function applyActionPerTick(
     case "scout":
       resources.militaryStrength += 0.05 * outputMult;
       break;
+    case "preserve_food":
+      // Produces food even in winter (at reduced rate when not winter)
+      if (isWinter) {
+        resources.food += Math.floor(1 * outputMult);
+      } else {
+        resources.food += Math.max(1, Math.floor(0.5 * outputMult));
+      }
+      break;
   }
 }
 
@@ -262,15 +300,25 @@ function applyActionCompletion(
 ): void {
   switch (actionId) {
     case "build_hut":
-      log.push({ year, message: "Hut built. Population capacity increased.", type: "info" });
+      resources.maxPopulation += 3;
+      log.push({ year, message: `Hut built. Population capacity now ${resources.maxPopulation}.`, type: "info" });
       resources.population += 2;
       break;
     case "build_granary":
-      log.push({ year, message: "Granary built. Food preservation improved.", type: "info" });
-      resources.food += Math.floor(50 * outputMult);
+      resources.foodStorage += Math.floor(150 * outputMult);
+      log.push({ year, message: `Granary built. Food storage now ${Math.floor(resources.foodStorage)}.`, type: "info" });
+      break;
+    case "build_wall":
+      resources.wallDefense += Math.floor(8 * outputMult);
+      log.push({ year, message: `Wall built. Wall defense now ${Math.floor(resources.wallDefense)}.`, type: "info" });
       break;
     case "research_tools":
-      log.push({ year, message: "Tool research complete.", type: "info" });
+      resources.techLevel += 1;
+      log.push({ year, message: `Tool research complete. Tech level ${resources.techLevel} (+${resources.techLevel * 10}% output).`, type: "info" });
+      break;
+    case "preserve_food":
+      resources.foodStorage += Math.floor(30 * outputMult);
+      log.push({ year, message: `Food preservation improved. Storage now ${Math.floor(resources.foodStorage)}.`, type: "info" });
       break;
   }
 }

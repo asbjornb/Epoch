@@ -10,18 +10,24 @@ export type Skills = Record<SkillName, SkillState>;
 export interface Resources {
   food: number;
   population: number;
+  maxPopulation: number;
   materials: number;
   militaryStrength: number;
+  wallDefense: number;
+  foodStorage: number;
+  techLevel: number;
 }
 
 export type ActionId =
   | "farm"
   | "build_hut"
   | "build_granary"
+  | "build_wall"
   | "train_militia"
   | "research_tools"
   | "gather_materials"
-  | "scout";
+  | "scout"
+  | "preserve_food";
 
 export interface ActionDef {
   id: ActionId;
