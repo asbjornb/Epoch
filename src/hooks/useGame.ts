@@ -8,13 +8,14 @@ import type {
 import { initialSkills } from "../engine/skills.ts";
 import { createInitialRun, tick } from "../engine/simulation.ts";
 
-type GameAction =
+export type GameAction =
   | { type: "tick" }
   | { type: "start_run" }
   | { type: "pause_run" }
   | { type: "resume_run" }
   | { type: "reset_run" }
   | { type: "set_speed"; speed: number }
+  | { type: "toggle_auto_restart" }
   | { type: "queue_add"; actionId: ActionId; repeat?: number }
   | { type: "queue_remove"; uid: string }
   | { type: "queue_move"; uid: string; direction: "up" | "down" }
@@ -87,15 +88,25 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       localStorage.setItem("epoch_skills", JSON.stringify(state.skills));
       const totalRuns = state.totalRuns + 1;
       localStorage.setItem("epoch_total_runs", String(totalRuns));
+      // Preserve queue and speed from previous run, plus autoRestart setting
+      const newRun = createInitialRun();
+      newRun.queue = state.run.queue.map((e) => ({ ...e }));
+      newRun.speed = state.run.speed;
+      newRun.autoRestart = state.run.autoRestart;
       return {
         ...state,
-        run: createInitialRun(),
+        run: newRun,
         totalRuns,
       };
     }
 
     case "set_speed": {
       const run = { ...state.run, speed: action.speed };
+      return { ...state, run };
+    }
+
+    case "toggle_auto_restart": {
+      const run = { ...state.run, autoRestart: !state.run.autoRestart };
       return { ...state, run };
     }
 
@@ -168,6 +179,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 export function useGame() {
   const [state, dispatch] = useReducer(gameReducer, null, createInitialState);
   const intervalRef = useRef<number | null>(null);
+  const autoRestartTimerRef = useRef<number | null>(null);
 
   const stopInterval = useCallback(() => {
     if (intervalRef.current !== null) {
@@ -196,6 +208,25 @@ export function useGame() {
       localStorage.setItem("epoch_skills", JSON.stringify(state.skills));
     }
   }, [state.run.status, state.skills]);
+
+  // Auto-restart on collapse
+  useEffect(() => {
+    if (state.run.status === "collapsed" && state.run.autoRestart) {
+      autoRestartTimerRef.current = window.setTimeout(() => {
+        dispatch({ type: "reset_run" });
+        // Start the new run after a brief delay for state to settle
+        window.setTimeout(() => {
+          dispatch({ type: "start_run" });
+        }, 50);
+      }, 1500);
+    }
+    return () => {
+      if (autoRestartTimerRef.current !== null) {
+        clearTimeout(autoRestartTimerRef.current);
+        autoRestartTimerRef.current = null;
+      }
+    };
+  }, [state.run.status, state.run.autoRestart]);
 
   return { state, dispatch };
 }

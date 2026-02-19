@@ -7,10 +7,11 @@ import type {
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { isActionUnlocked, getSkillDurationMultiplier } from "../engine/skills.ts";
+import type { GameAction } from "../hooks/useGame.ts";
 
 interface QueuePanelProps {
   state: GameState;
-  dispatch: React.Dispatch<any>;
+  dispatch: React.Dispatch<GameAction>;
 }
 
 const SKILL_COLORS: Record<string, string> = {
@@ -32,7 +33,7 @@ function ActionPalette({
   dispatch,
 }: {
   state: GameState;
-  dispatch: React.Dispatch<any>;
+  dispatch: React.Dispatch<GameAction>;
 }) {
   const available = ACTION_DEFS.filter((a) =>
     isActionUnlocked(state.skills, a.skill, a.unlockLevel),
@@ -63,7 +64,12 @@ function ActionPalette({
             >
               <span className="palette-action-icon">{SKILL_ICONS[a.skill]}</span>
               <span className="palette-action-name">{a.name}</span>
-              <span className="palette-action-dur">{dur}y</span>
+              <span className="palette-action-meta">
+                <span className="palette-action-dur">{dur}y</span>
+                {a.materialCost && (
+                  <span className="palette-action-cost">{a.materialCost}m</span>
+                )}
+              </span>
             </button>
           );
         })}
@@ -76,7 +82,9 @@ function ActionPalette({
           >
             <span className="palette-action-icon">🔒</span>
             <span className="palette-action-name">{a.name}</span>
-            <span className="palette-action-dur">Lv{a.unlockLevel}</span>
+            <span className="palette-action-meta">
+              <span className="palette-action-dur">Lv{a.unlockLevel}</span>
+            </span>
           </button>
         ))}
       </div>
@@ -101,12 +109,13 @@ function QueueItem({
   duration: number;
   isFirst: boolean;
   isLast: boolean;
-  dispatch: React.Dispatch<any>;
+  dispatch: React.Dispatch<GameAction>;
 }) {
   const def = getActionDef(entry.actionId);
   if (!def) return null;
 
   const pct = isActive ? Math.min(100, (progress / duration) * 100) : 0;
+  const repeatLabel = entry.repeat === -1 ? "∞" : `×${entry.repeat}`;
 
   return (
     <div className={`queue-item ${isActive ? "active" : ""}`}>
@@ -121,6 +130,7 @@ function QueueItem({
             style={{ background: SKILL_COLORS[def.skill] }}
           />
           <span className="queue-item-name">{def.name}</span>
+          <span className="queue-item-repeat">{repeatLabel}</span>
           {isActive && (
             <span className="queue-item-timer">
               {progress}/{duration}y
@@ -128,6 +138,19 @@ function QueueItem({
           )}
         </div>
         <div className="queue-item-right">
+          <button
+            className="queue-btn"
+            onClick={() =>
+              dispatch({
+                type: "queue_set_repeat",
+                uid: entry.uid,
+                repeat: entry.repeat === -1 ? 1 : entry.repeat === 1 ? 3 : entry.repeat === 3 ? 5 : entry.repeat === 5 ? 10 : -1,
+              })
+            }
+            title="Cycle repeat count (1, 3, 5, 10, ∞)"
+          >
+            ↻
+          </button>
           <button
             className="queue-btn"
             onClick={() =>
@@ -174,7 +197,7 @@ function SavedQueuesBar({
 }: {
   savedQueues: SavedQueue[];
   currentQueue: QueueEntry[];
-  dispatch: React.Dispatch<any>;
+  dispatch: React.Dispatch<GameAction>;
 }) {
   const [saveName, setSaveName] = useState("");
 
@@ -245,7 +268,11 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
   };
 
   const totalYears = queue.reduce(
-    (sum, e) => sum + getEffectiveDuration(e.actionId),
+    (sum, e) => {
+      const dur = getEffectiveDuration(e.actionId);
+      const reps = e.repeat === -1 ? 1 : e.repeat; // show 1x for infinite in total
+      return sum + dur * reps;
+    },
     0,
   );
 
@@ -255,7 +282,7 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
         <h2>Queue</h2>
         <div className="queue-meta">
           <span className="queue-count">{queue.length} actions</span>
-          <span className="queue-total-years">{totalYears} years</span>
+          <span className="queue-total-years">~{totalYears} years</span>
         </div>
       </div>
 
@@ -272,11 +299,22 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
         ) : (
           <div className="queue-list">
             {queue.map((entry, i) => {
+              // Determine which queue array index is currently active
+              // currentQueueIndex is a logical position counting repeats
+              let activeArrayIdx = -1;
+              let logicalPos = 0;
+              for (let j = 0; j < queue.length; j++) {
+                const reps = queue[j].repeat === -1 ? Infinity : queue[j].repeat;
+                if (logicalPos + reps > run.currentQueueIndex) {
+                  activeArrayIdx = j;
+                  break;
+                }
+                logicalPos += reps;
+              }
+              if (activeArrayIdx === -1) activeArrayIdx = queue.length - 1;
+
               const isActive =
-                run.status === "running" &&
-                (i === run.currentQueueIndex ||
-                  (i === queue.length - 1 &&
-                    run.currentQueueIndex >= queue.length));
+                run.status === "running" && i === activeArrayIdx;
               const duration = getEffectiveDuration(entry.actionId);
               return (
                 <QueueItem
