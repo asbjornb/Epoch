@@ -393,7 +393,8 @@ h1, h2, h3 {
 }
 
 .queue-header h2 {
-  font-size: 1rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
 }
 
 .queue-meta {
@@ -411,33 +412,40 @@ h1, h2, h3 {
 }
 
 .palette-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--text-dim);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .palette-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 6px;
 }
 
 .palette-action {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border-radius: 6px;
-  border-left: 3px solid transparent;
+  gap: 4px;
+  padding: 14px 8px 12px;
+  border-radius: 8px;
+  border-top: 3px solid transparent;
   background: var(--bg);
-  transition: background 0.12s;
-  text-align: left;
+  transition: background 0.15s, transform 0.1s;
+  text-align: center;
+  cursor: pointer;
 }
 
 .palette-action:hover {
   background: var(--bg-hover);
+  transform: translateY(-1px);
+}
+
+.palette-action:active {
+  transform: translateY(0);
 }
 
 .palette-action.locked {
@@ -446,22 +454,15 @@ h1, h2, h3 {
 }
 
 .palette-action-icon {
-  font-size: 0.9rem;
-  width: 20px;
-  text-align: center;
+  font-size: 1.5rem;
+  line-height: 1;
 }
 
 .palette-action-name {
-  flex: 1;
   font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.palette-action-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
+  font-weight: 600;
+  color: var(--text-bright);
+  line-height: 1.2;
 }
 
 .palette-action-dur {
@@ -471,7 +472,7 @@ h1, h2, h3 {
 }
 
 .palette-action-cost {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   color: var(--building);
   font-variant-numeric: tabular-nums;
 }
@@ -481,11 +482,14 @@ h1, h2, h3 {
   flex: 1;
   overflow-y: auto;
   min-height: 120px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 6px;
 }
 
 .queue-empty {
   text-align: center;
-  padding: 32px 16px;
+  padding: 40px 16px;
   color: var(--text-dim);
 }
 
@@ -500,7 +504,7 @@ h1, h2, h3 {
 .queue-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .queue-item {
@@ -529,7 +533,7 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
+  padding: 8px 10px;
   z-index: 1;
 }
 
@@ -1579,7 +1583,7 @@ h1, h2, h3 {
   }
 
   .palette-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   }
 
   .resources {
