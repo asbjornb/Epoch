@@ -4,6 +4,7 @@ import type {
   Resources,
   LogEntry,
   QueueEntry,
+  EventPopup,
 } from "../types/game.ts";
 import { getActionDef } from "../types/actions.ts";
 import {
@@ -54,6 +55,8 @@ export function createInitialRun(): RunState {
     status: "idle",
     log: [],
     autoRestart: true,
+    pendingEvents: [],
+    pausedByEvent: false,
   };
 }
 
@@ -101,6 +104,7 @@ export function tick(state: GameState): GameState {
   const resources = { ...run.resources };
   const skills = { ...state.skills };
   const log: LogEntry[] = [...run.log];
+  const pendingEvents: EventPopup[] = [...run.pendingEvents];
 
   if (run.status !== "running") return state;
 
@@ -212,29 +216,59 @@ export function tick(state: GameState): GameState {
       resources.food += foodBonus;
       resources.materials += materialBonus;
       skills.military = addXp(skills.military, 50);
-      log.push({
-        year: run.year,
-        message: `Raiders repelled! Defense held (${Math.floor(totalDefense)}/${RAIDER_STRENGTH_REQUIRED}). Gained ${foodBonus} food, ${materialBonus} materials, and military XP.`,
+      const raidMsg = `Raiders repelled! Defense held (${Math.floor(totalDefense)}/${RAIDER_STRENGTH_REQUIRED}). Gained ${foodBonus} food, ${materialBonus} materials, and military XP.`;
+      log.push({ year: run.year, message: raidMsg, type: "success" });
+      const firstTime = !state.seenEventTypes.includes("raider_survived");
+      pendingEvents.push({
+        eventId: "raider_survived",
+        title: "Raiders Repelled!",
+        message: raidMsg,
         type: "success",
+        year: run.year,
+        firstTime,
       });
+      if (firstTime) {
+        run.status = "paused";
+        run.pausedByEvent = true;
+      }
     }
   }
 
   // Winter event
   if (run.year === WINTER_START) {
-    log.push({
-      year: run.year,
-      message: `The Great Cold begins. Farming disabled, food consumption doubled. Food stored: ${Math.floor(resources.food)}/${Math.floor(resources.foodStorage)}.`,
+    const winterMsg = `The Great Cold begins. Farming disabled, food consumption doubled. Food stored: ${Math.floor(resources.food)}/${Math.floor(resources.foodStorage)}.`;
+    log.push({ year: run.year, message: winterMsg, type: "warning" });
+    const firstTime = !state.seenEventTypes.includes("winter_start");
+    pendingEvents.push({
+      eventId: "winter_start",
+      title: "The Great Cold",
+      message: winterMsg,
       type: "warning",
+      year: run.year,
+      firstTime,
     });
+    if (firstTime) {
+      run.status = "paused";
+      run.pausedByEvent = true;
+    }
   }
   if (run.year === WINTER_END) {
     if (resources.population > 0 && resources.food > 0) {
-      log.push({
-        year: run.year,
-        message: "The Great Cold ends. Your civilization survived!",
+      const winterEndMsg = "The Great Cold ends. Your civilization survived!";
+      log.push({ year: run.year, message: winterEndMsg, type: "success" });
+      const firstTime = !state.seenEventTypes.includes("winter_end");
+      pendingEvents.push({
+        eventId: "winter_end",
+        title: "Spring Returns",
+        message: winterEndMsg,
         type: "success",
+        year: run.year,
+        firstTime,
       });
+      if (firstTime) {
+        run.status = "paused";
+        run.pausedByEvent = true;
+      }
     }
   }
 
@@ -261,6 +295,7 @@ export function tick(state: GameState): GameState {
 
   run.resources = resources;
   run.log = log;
+  run.pendingEvents = pendingEvents;
 
   // Track encountered disasters
   let encounteredDisasters = state.encounteredDisasters;

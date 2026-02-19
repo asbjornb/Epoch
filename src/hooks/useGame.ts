@@ -16,6 +16,7 @@ export type GameAction =
   | { type: "resume_run" }
   | { type: "reset_run" }
   | { type: "toggle_auto_restart" }
+  | { type: "dismiss_event" }
   | { type: "queue_add"; actionId: ActionId; repeat?: number }
   | { type: "queue_remove"; uid: string }
   | { type: "queue_move"; uid: string; direction: "up" | "down" }
@@ -87,6 +88,31 @@ function loadEncounteredDisasters(): string[] {
   return [];
 }
 
+function loadSeenEventTypes(): string[] {
+  try {
+    const saved = localStorage.getItem("epoch_seen_event_types");
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return [];
+}
+
+function loadLastRunYear(): number {
+  try {
+    const saved = localStorage.getItem("epoch_last_run_year");
+    if (saved) return parseInt(saved, 10);
+  } catch { /* ignore */ }
+  return 0;
+}
+
+function cloneSkills(skills: GameState["skills"]): GameState["skills"] {
+  return {
+    farming: { ...skills.farming },
+    building: { ...skills.building },
+    research: { ...skills.research },
+    military: { ...skills.military },
+  };
+}
+
 function createInitialState(): GameState {
   const skills = loadSkills();
   const unlocked = loadUnlockedActions();
@@ -97,6 +123,9 @@ function createInitialState(): GameState {
     unlockedActions: computeSkillUnlocks(unlocked, skills),
     savedQueues: loadSavedQueues(),
     encounteredDisasters: loadEncounteredDisasters(),
+    seenEventTypes: loadSeenEventTypes(),
+    lastRunYear: loadLastRunYear(),
+    skillsAtRunStart: cloneSkills(skills),
   };
 }
 
@@ -115,7 +144,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "start_run": {
       const run = { ...state.run, status: "running" as const };
-      return { ...state, run };
+      return { ...state, run, skillsAtRunStart: cloneSkills(state.skills) };
     }
 
     case "pause_run": {
@@ -133,6 +162,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       localStorage.setItem("epoch_skills", JSON.stringify(state.skills));
       const totalRuns = state.totalRuns + 1;
       localStorage.setItem("epoch_total_runs", String(totalRuns));
+
+      // Save the year reached in the ending run
+      const lastRunYear = state.run.year;
+      localStorage.setItem("epoch_last_run_year", String(lastRunYear));
 
       // After first run, unlock the other three starting actions
       let unlockedActions = state.unlockedActions;
@@ -158,7 +191,27 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         run: newRun,
         totalRuns,
         unlockedActions,
+        lastRunYear,
       };
+    }
+
+    case "dismiss_event": {
+      const dismissed = state.run.pendingEvents[0];
+      if (!dismissed) return state;
+      const pendingEvents = state.run.pendingEvents.slice(1);
+      let seenEventTypes = state.seenEventTypes;
+      if (!seenEventTypes.includes(dismissed.eventId)) {
+        seenEventTypes = [...seenEventTypes, dismissed.eventId];
+        localStorage.setItem("epoch_seen_event_types", JSON.stringify(seenEventTypes));
+      }
+      const shouldResume = state.run.pausedByEvent && pendingEvents.length === 0;
+      const run = {
+        ...state.run,
+        pendingEvents,
+        pausedByEvent: pendingEvents.length > 0 ? state.run.pausedByEvent : false,
+        status: shouldResume ? "running" as const : state.run.status,
+      };
+      return { ...state, run, seenEventTypes };
     }
 
     case "toggle_auto_restart": {
