@@ -295,6 +295,31 @@ h1, h2, h3 {
   color: var(--danger);
 }
 
+.auto-restart-notice {
+  font-weight: 400;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.auto-restart-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+.auto-restart-toggle input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.auto-restart-label {
+  white-space: nowrap;
+}
+
 /* ===== Queue Panel (central element) ===== */
 .queue-panel {
   background: var(--bg-surface);
@@ -377,9 +402,22 @@ h1, h2, h3 {
   font-weight: 500;
 }
 
+.palette-action-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
 .palette-action-dur {
   font-size: 0.7rem;
   color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.palette-action-cost {
+  font-size: 0.6rem;
+  color: var(--building);
   font-variant-numeric: tabular-nums;
 }
 
@@ -464,6 +502,15 @@ h1, h2, h3 {
 .queue-item-name {
   font-size: 0.8rem;
   font-weight: 500;
+}
+
+.queue-item-repeat {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  background: var(--bg-raised);
+  padding: 0 4px;
+  border-radius: 2px;
+  font-variant-numeric: tabular-nums;
 }
 
 .queue-item-timer {

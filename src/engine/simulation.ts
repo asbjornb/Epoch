@@ -13,6 +13,7 @@ import {
 } from "./skills.ts";
 
 const FOOD_PER_POP = 1;
+const WINTER_FOOD_PER_POP = 2; // doubled consumption during Great Cold
 const POP_GROWTH_THRESHOLD = 20; // surplus food needed for pop growth
 const RAIDER_YEAR = 2000;
 const RAIDER_STRENGTH_REQUIRED = 30;
@@ -39,6 +40,7 @@ export function createInitialRun(): RunState {
     status: "idle",
     speed: 1,
     log: [],
+    autoRestart: true,
   };
 }
 
@@ -49,13 +51,32 @@ function getEffectiveDuration(
   return Math.max(1, Math.round(baseDuration * getSkillDurationMultiplier(skillLevel)));
 }
 
-function getCurrentQueueEntry(run: RunState): QueueEntry | null {
+function getCurrentQueueEntry(run: RunState): { entry: QueueEntry; index: number } | null {
   if (run.queue.length === 0) return null;
-  if (run.currentQueueIndex < run.queue.length) {
-    return run.queue[run.currentQueueIndex];
+
+  // Walk through queue respecting repeat counts
+  let queueIdx = 0;
+  let repeatsDone = 0;
+
+  // Reconstruct position from currentQueueIndex which tracks
+  // the logical position (counting repeats)
+  let logicalPos = 0;
+  for (let i = 0; i < run.queue.length; i++) {
+    const entry = run.queue[i];
+    const repeats = entry.repeat === -1 ? Infinity : entry.repeat;
+    if (logicalPos + repeats > run.currentQueueIndex) {
+      queueIdx = i;
+      repeatsDone = run.currentQueueIndex - logicalPos;
+      break;
+    }
+    logicalPos += repeats;
+    if (i === run.queue.length - 1) {
+      // Past end of queue: repeat last action
+      return { entry: run.queue[run.queue.length - 1], index: run.currentQueueIndex };
+    }
   }
-  // Default: repeat last action
-  return run.queue[run.queue.length - 1];
+
+  return { entry: run.queue[queueIdx], index: run.currentQueueIndex };
 }
 
 export function tick(state: GameState): GameState {
@@ -68,8 +89,11 @@ export function tick(state: GameState): GameState {
 
   run.year++;
 
-  // Food consumption
-  const foodConsumed = resources.population * FOOD_PER_POP;
+  const isWinter = run.year >= WINTER_START && run.year <= WINTER_END;
+
+  // Food consumption (doubled during winter)
+  const foodPerPop = isWinter ? WINTER_FOOD_PER_POP : FOOD_PER_POP;
+  const foodConsumed = resources.population * foodPerPop;
   resources.food -= foodConsumed;
 
   // Population starvation
@@ -89,40 +113,54 @@ export function tick(state: GameState): GameState {
     }
   }
 
-  // Population growth
-  if (resources.food > resources.population * FOOD_PER_POP + POP_GROWTH_THRESHOLD) {
+  // Population growth (not during winter)
+  if (!isWinter && resources.food > resources.population * FOOD_PER_POP + POP_GROWTH_THRESHOLD) {
     resources.population++;
   }
 
   // Process current action
-  const entry = getCurrentQueueEntry(run);
-  if (entry) {
+  const current = getCurrentQueueEntry(run);
+  if (current) {
+    const { entry } = current;
     const def = getActionDef(entry.actionId);
     if (def) {
       const skillLevel = skills[def.skill].level;
       const duration = getEffectiveDuration(def.baseDuration, skillLevel);
       const outputMult = getSkillOutputMultiplier(skillLevel);
 
-      // Per-tick effects
-      const isWinter = run.year >= WINTER_START && run.year <= WINTER_END;
-      applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
-
-      // XP per tick
-      skills[def.skill] = addXp(skills[def.skill], 1);
-
-      run.currentActionProgress++;
-
-      // Action complete
-      if (run.currentActionProgress >= duration) {
-        applyActionCompletion(entry.actionId, resources, outputMult, log, run.year);
-        skills[def.skill] = addXp(skills[def.skill], 5);
+      // Check material cost at start of action
+      if (run.currentActionProgress === 0 && def.materialCost && def.materialCost > resources.materials) {
+        // Not enough materials, skip this action and advance queue
+        log.push({
+          year: run.year,
+          message: `Cannot ${def.name}: need ${def.materialCost} materials (have ${Math.floor(resources.materials)}).`,
+          type: "warning",
+        });
         run.currentActionProgress = 0;
+        run.currentQueueIndex++;
+      } else {
+        // Deduct materials at start of action
+        if (run.currentActionProgress === 0 && def.materialCost) {
+          resources.materials -= def.materialCost;
+        }
 
-        // Advance queue
-        if (run.currentQueueIndex < run.queue.length - 1) {
+        // Per-tick effects
+        applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
+
+        // XP per tick
+        skills[def.skill] = addXp(skills[def.skill], 1);
+
+        run.currentActionProgress++;
+
+        // Action complete
+        if (run.currentActionProgress >= duration) {
+          applyActionCompletion(entry.actionId, resources, outputMult, log, run.year);
+          skills[def.skill] = addXp(skills[def.skill], 5);
+          run.currentActionProgress = 0;
+
+          // Advance logical queue position
           run.currentQueueIndex++;
         }
-        // else: stays on last action (repeat)
       }
     }
   }
@@ -131,7 +169,7 @@ export function tick(state: GameState): GameState {
   if (run.year === RAIDER_YEAR) {
     if (resources.militaryStrength < RAIDER_STRENGTH_REQUIRED) {
       run.status = "collapsed";
-      run.collapseReason = `Raiders attacked at year ${RAIDER_YEAR}. Military strength ${resources.militaryStrength} < ${RAIDER_STRENGTH_REQUIRED} required.`;
+      run.collapseReason = `Raiders attacked at year ${RAIDER_YEAR}. Military strength ${Math.floor(resources.militaryStrength)} < ${RAIDER_STRENGTH_REQUIRED} required.`;
       log.push({
         year: run.year,
         message: run.collapseReason,
@@ -150,7 +188,7 @@ export function tick(state: GameState): GameState {
   if (run.year === WINTER_START) {
     log.push({
       year: run.year,
-      message: "The Great Cold begins. Farming is disabled.",
+      message: "The Great Cold begins. Farming disabled, food consumption doubled.",
       type: "warning",
     });
   }
@@ -180,7 +218,7 @@ export function tick(state: GameState): GameState {
     run.status = "victory";
     log.push({
       year: run.year,
-      message: "Civilization survived the full epoch!",
+      message: "Civilization survived the full epoch! Victory!",
       type: "success",
     });
   }

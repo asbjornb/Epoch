@@ -20,18 +20,20 @@ export const ACTION_DEFS: ActionDef[] = [
   {
     id: "build_hut",
     name: "Build Hut",
-    description: "Shelter for population. Increases pop capacity.",
+    description: "Shelter for population. Increases pop capacity. Costs 20 materials.",
     skill: "building",
     baseDuration: 120,
     unlockLevel: 2,
+    materialCost: 20,
   },
   {
     id: "build_granary",
     name: "Build Granary",
-    description: "Reduces food spoilage. Critical for winter prep.",
+    description: "Stores extra food. Critical for winter prep. Costs 50 materials.",
     skill: "building",
     baseDuration: 200,
     unlockLevel: 5,
+    materialCost: 50,
   },
   {
     id: "train_militia",

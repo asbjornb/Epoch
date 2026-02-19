@@ -30,6 +30,7 @@ export interface ActionDef {
   skill: SkillName;
   baseDuration: number;
   unlockLevel: number;
+  materialCost?: number;
 }
 
 export interface QueueEntry {
@@ -49,6 +50,7 @@ export interface RunState {
   speed: number; // ticks per second
   log: LogEntry[];
   collapseReason?: string;
+  autoRestart: boolean;
 }
 
 export interface LogEntry {

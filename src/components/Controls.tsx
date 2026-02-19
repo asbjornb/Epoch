@@ -1,12 +1,13 @@
 import type { RunState } from "../types/game.ts";
+import type { GameAction } from "../hooks/useGame.ts";
 
 interface ControlsProps {
   run: RunState;
   totalRuns: number;
-  dispatch: React.Dispatch<any>;
+  dispatch: React.Dispatch<GameAction>;
 }
 
-const SPEEDS = [1, 5, 20, 100];
+const SPEEDS = [1, 5, 20, 100, 500];
 
 export function Controls({ run, totalRuns, dispatch }: ControlsProps) {
   const isIdle = run.status === "idle";
@@ -60,11 +61,22 @@ export function Controls({ run, totalRuns, dispatch }: ControlsProps) {
             {run.status === "victory"
               ? "Victory!"
               : `Collapsed: ${run.collapseReason ?? "Unknown"}`}
+            {run.status === "collapsed" && run.autoRestart && (
+              <span className="auto-restart-notice"> (restarting...)</span>
+            )}
           </div>
         )}
       </div>
 
       <div className="controls-right">
+        <label className="auto-restart-toggle" title="Automatically restart on collapse">
+          <input
+            type="checkbox"
+            checked={run.autoRestart}
+            onChange={() => dispatch({ type: "toggle_auto_restart" })}
+          />
+          <span className="auto-restart-label">Auto</span>
+        </label>
         <div className="speed-selector">
           {SPEEDS.map((s) => (
             <button
