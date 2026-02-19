@@ -180,7 +180,7 @@ export function tick(state: GameState): GameState {
         }
 
         // Per-tick effects
-        applyActionPerTick(entry.actionId, resources, outputMult, isWinter, skillLevel);
+        applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
 
         // XP per tick
         skills[def.skill] = addXp(skills[def.skill], 1);
@@ -313,17 +313,15 @@ function applyActionPerTick(
   resources: Resources,
   outputMult: number,
   isWinter: boolean,
-  skillLevel: number,
 ): void {
   switch (actionId) {
     case "farm":
       if (!isWinter) {
-        // Base food scaled by output multiplier, plus a flat bonus from farming skill
-        resources.food += Math.floor(2 * outputMult) + Math.floor(skillLevel / 5);
+        resources.food += 2 * outputMult;
       }
       break;
     case "gather_materials":
-      resources.materials += Math.floor(1 * outputMult);
+      resources.materials += 1 * outputMult;
       break;
     case "train_militia":
       resources.militaryStrength += 0.2 * outputMult;
@@ -334,9 +332,9 @@ function applyActionPerTick(
     case "preserve_food":
       // Produces food even in winter (at reduced rate when not winter)
       if (isWinter) {
-        resources.food += Math.floor(1 * outputMult);
+        resources.food += 1 * outputMult;
       } else {
-        resources.food += Math.max(1, Math.floor(0.5 * outputMult));
+        resources.food += 0.5 * outputMult;
       }
       break;
   }
