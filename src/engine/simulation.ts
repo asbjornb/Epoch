@@ -32,8 +32,8 @@ export const DISASTERS: DisasterInfo[] = [
 
 export function createInitialResources(): Resources {
   return {
-    food: 0,
-    population: 5,
+    food: 2,
+    population: 2,
     maxPopulation: INITIAL_MAX_POP,
     materials: 0,
     militaryStrength: 0,
