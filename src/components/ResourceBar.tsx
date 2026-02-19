@@ -42,25 +42,25 @@ export function ResourceBar({ resources, year, maxYear, encounteredDisasters }: 
           label="Food"
           value={Math.floor(resources.food)}
           icon="🌾"
-          color="#4a7c3f"
+          color="#5e7a53"
           extra={`/ ${Math.floor(resources.foodStorage)}`}
         />
         <ResourceItem
           label="Pop"
           value={resources.population}
           icon="👥"
-          color="#5a6a7a"
+          color="#6a6f78"
           extra={`/ ${resources.maxPopulation}`}
         />
         {resources.materials > 0 && (
-          <ResourceItem label="Materials" value={Math.floor(resources.materials)} icon="🪨" color="#8b6914" />
+          <ResourceItem label="Materials" value={Math.floor(resources.materials)} icon="🪨" color="#867e74" />
         )}
         {resources.militaryStrength + resources.wallDefense > 0 && (
           <ResourceItem
             label="Defense"
             value={Math.floor(resources.militaryStrength + resources.wallDefense)}
             icon="⚔"
-            color="#8a3a3a"
+            color="#8b5555"
             extra={resources.wallDefense > 0 ? `(${Math.floor(resources.militaryStrength)}+${Math.floor(resources.wallDefense)})` : undefined}
           />
         )}
@@ -69,7 +69,7 @@ export function ResourceBar({ resources, year, maxYear, encounteredDisasters }: 
             label="Tech"
             value={resources.techLevel}
             icon="🔬"
-            color="#3a5f8a"
+            color="#527a8c"
             extra={`+${resources.techLevel * 10}%`}
           />
         )}

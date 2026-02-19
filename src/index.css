@@ -17,14 +17,14 @@
   --text: #c1c2c5;
   --text-dim: #909296;
   --text-bright: #e4e5e7;
-  --accent: #6c8ebf;
-  --danger: #c94040;
-  --success: #4a7c3f;
-  --warning: #c49b2a;
-  --farming: #4a7c3f;
-  --building: #8b6914;
-  --research: #3a5f8a;
-  --military: #8a3a3a;
+  --accent: #6b8299;
+  --danger: #a85454;
+  --success: #5e7a53;
+  --warning: #b09455;
+  --farming: #5e7a53;
+  --building: #867e74;
+  --research: #527a8c;
+  --military: #8b5555;
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -186,7 +186,7 @@ h1, h2, h3 {
 }
 
 .year-marker.winter {
-  background: #6aa8d0;
+  background: #7a9aad;
 }
 
 .resources {
@@ -468,7 +468,7 @@ h1, h2, h3 {
   top: 0;
   left: 0;
   height: 100%;
-  background: rgba(108, 142, 191, 0.12);
+  background: rgba(107, 130, 153, 0.12);
   transition: width 0.1s linear;
   pointer-events: none;
 }
@@ -552,7 +552,7 @@ h1, h2, h3 {
 }
 
 .queue-btn.danger:hover:not(:disabled) {
-  background: rgba(201, 64, 64, 0.2);
+  background: rgba(168, 84, 84, 0.2);
   color: var(--danger);
 }
 
@@ -659,7 +659,7 @@ h1, h2, h3 {
 }
 
 .saved-queue-delete:hover {
-  background: rgba(201, 64, 64, 0.2);
+  background: rgba(168, 84, 84, 0.2);
   color: var(--danger);
 }
 
@@ -683,7 +683,7 @@ h1, h2, h3 {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--success);
-  background: rgba(74, 124, 63, 0.15);
+  background: rgba(94, 122, 83, 0.15);
   padding: 1px 6px;
   border-radius: 3px;
   font-weight: 500;
@@ -1174,7 +1174,7 @@ h1, h2, h3 {
 .run-summary-reason {
   font-size: 0.8rem;
   color: var(--danger);
-  background: rgba(201, 64, 64, 0.1);
+  background: rgba(168, 84, 84, 0.1);
   padding: 8px 10px;
   border-radius: 4px;
   margin-bottom: 12px;
@@ -1389,12 +1389,12 @@ h1, h2, h3 {
 }
 
 .settings-feedback-success {
-  background: rgba(74, 124, 63, 0.15);
+  background: rgba(94, 122, 83, 0.15);
   color: var(--success);
 }
 
 .settings-feedback-danger {
-  background: rgba(201, 64, 64, 0.15);
+  background: rgba(168, 84, 84, 0.15);
   color: var(--danger);
 }
 
@@ -1445,11 +1445,11 @@ h1, h2, h3 {
 }
 
 .settings-reset-btn:hover {
-  background: rgba(201, 64, 64, 0.15) !important;
+  background: rgba(168, 84, 84, 0.15) !important;
 }
 
 .settings-reset-btn.confirming {
-  background: rgba(201, 64, 64, 0.15);
+  background: rgba(168, 84, 84, 0.15);
   font-weight: 600;
 }
 
