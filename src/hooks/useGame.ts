@@ -16,6 +16,7 @@ export type GameAction =
   | { type: "reset_run" }
   | { type: "toggle_auto_restart" }
   | { type: "dismiss_event" }
+  | { type: "dismiss_event_no_pause" }
   | { type: "queue_add"; actionId: ActionId; repeat?: number }
   | { type: "queue_remove"; uid: string }
   | { type: "queue_move"; uid: string; direction: "up" | "down" }
@@ -81,6 +82,14 @@ function loadEncounteredDisasters(): string[] {
 function loadSeenEventTypes(): string[] {
   try {
     const saved = localStorage.getItem("epoch_seen_event_types");
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return [];
+}
+
+function loadAutoDismissEventTypes(): string[] {
+  try {
+    const saved = localStorage.getItem("epoch_auto_dismiss_event_types");
     if (saved) return JSON.parse(saved);
   } catch { /* ignore */ }
   return [];
@@ -161,6 +170,7 @@ function createInitialState(): GameState {
     unlockedActions: computeSkillUnlocks(unlocked, skills),
     encounteredDisasters: loadEncounteredDisasters(),
     seenEventTypes: loadSeenEventTypes(),
+    autoDismissEventTypes: loadAutoDismissEventTypes(),
     lastRunYear: loadLastRunYear(),
     skillsAtRunStart: cloneSkills(skills),
   };
@@ -251,6 +261,30 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, run, seenEventTypes };
     }
 
+    case "dismiss_event_no_pause": {
+      const dismissed = state.run.pendingEvents[0];
+      if (!dismissed) return state;
+      const pendingEvents = state.run.pendingEvents.slice(1);
+      let seenEventTypes = state.seenEventTypes;
+      if (!seenEventTypes.includes(dismissed.eventId)) {
+        seenEventTypes = [...seenEventTypes, dismissed.eventId];
+        localStorage.setItem("epoch_seen_event_types", JSON.stringify(seenEventTypes));
+      }
+      let autoDismissEventTypes = state.autoDismissEventTypes;
+      if (!autoDismissEventTypes.includes(dismissed.eventId)) {
+        autoDismissEventTypes = [...autoDismissEventTypes, dismissed.eventId];
+        localStorage.setItem("epoch_auto_dismiss_event_types", JSON.stringify(autoDismissEventTypes));
+      }
+      const shouldResume = state.run.pausedByEvent && pendingEvents.length === 0;
+      const run = {
+        ...state.run,
+        pendingEvents,
+        pausedByEvent: pendingEvents.length > 0 ? state.run.pausedByEvent : false,
+        status: shouldResume ? "running" as const : state.run.status,
+      };
+      return { ...state, run, seenEventTypes, autoDismissEventTypes };
+    }
+
     case "toggle_auto_restart": {
       const run = { ...state.run, autoRestart: !state.run.autoRestart };
       return { ...state, run };
@@ -312,6 +346,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       localStorage.removeItem("epoch_unlocked_actions");
       localStorage.removeItem("epoch_encountered_disasters");
       localStorage.removeItem("epoch_seen_event_types");
+      localStorage.removeItem("epoch_auto_dismiss_event_types");
       localStorage.removeItem("epoch_last_run_year");
       const skills = initialSkills();
       return {
@@ -321,6 +356,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         unlockedActions: [...DEFAULT_UNLOCKED_ACTIONS],
         encounteredDisasters: [],
         seenEventTypes: [],
+        autoDismissEventTypes: [],
         lastRunYear: 0,
         skillsAtRunStart: cloneSkills(skills),
       };

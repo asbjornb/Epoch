@@ -89,6 +89,7 @@ export interface GameState {
   unlockedActions: ActionId[];
   encounteredDisasters: string[];
   seenEventTypes: string[];
+  autoDismissEventTypes: string[];
   lastRunYear: number;
   skillsAtRunStart: Skills;
 }
