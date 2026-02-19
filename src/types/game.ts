@@ -76,11 +76,5 @@ export interface GameState {
   run: RunState;
   totalRuns: number;
   unlockedActions: ActionId[];
-  savedQueues: SavedQueue[];
   encounteredDisasters: string[];
-}
-
-export interface SavedQueue {
-  name: string;
-  entries: QueueEntry[];
 }

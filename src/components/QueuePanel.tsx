@@ -1,9 +1,7 @@
-import { useState } from "react";
 import type {
   ActionId,
   GameState,
   QueueEntry,
-  SavedQueue,
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { isActionUnlocked, getSkillDurationMultiplier } from "../engine/skills.ts";
@@ -176,68 +174,6 @@ function QueueItem({
   );
 }
 
-function SavedQueuesBar({
-  savedQueues,
-  currentQueue,
-  dispatch,
-}: {
-  savedQueues: SavedQueue[];
-  currentQueue: QueueEntry[];
-  dispatch: React.Dispatch<GameAction>;
-}) {
-  const [saveName, setSaveName] = useState("");
-
-  return (
-    <div className="saved-queues-bar">
-      <div className="save-queue-form">
-        <input
-          type="text"
-          placeholder="Queue name..."
-          value={saveName}
-          onChange={(e) => setSaveName(e.target.value)}
-          className="save-queue-input"
-        />
-        <button
-          className="save-queue-btn"
-          disabled={!saveName.trim() || currentQueue.length === 0}
-          onClick={() => {
-            dispatch({ type: "save_queue", name: saveName.trim() });
-            setSaveName("");
-          }}
-        >
-          Save
-        </button>
-      </div>
-      {savedQueues.length > 0 && (
-        <div className="saved-queue-list">
-          {savedQueues.map((sq) => (
-            <div key={sq.name} className="saved-queue-chip">
-              <button
-                className="saved-queue-load"
-                onClick={() =>
-                  dispatch({ type: "queue_load", entries: sq.entries })
-                }
-                title={`Load "${sq.name}" (${sq.entries.length} actions)`}
-              >
-                {sq.name}
-              </button>
-              <button
-                className="saved-queue-delete"
-                onClick={() =>
-                  dispatch({ type: "delete_saved_queue", name: sq.name })
-                }
-                title="Delete"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function QueuePanel({ state, dispatch }: QueuePanelProps) {
   const { run, skills } = state;
   const queue = run.queue;
@@ -333,11 +269,6 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
         </button>
       </div>
 
-      <SavedQueuesBar
-        savedQueues={state.savedQueues}
-        currentQueue={queue}
-        dispatch={dispatch}
-      />
     </div>
   );
 }
