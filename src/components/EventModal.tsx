@@ -3,30 +3,32 @@ import type { EventPopup } from "../types/game.ts";
 
 interface EventModalProps {
   event: EventPopup;
+  autoDismiss: boolean;
   onDismiss: () => void;
+  onDismissNoPause: () => void;
 }
 
-export function EventModal({ event, onDismiss }: EventModalProps) {
+export function EventModal({ event, autoDismiss, onDismiss, onDismissNoPause }: EventModalProps) {
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Auto-dismiss after 3 seconds for previously-seen events
-    if (!event.firstTime) {
-      timerRef.current = window.setTimeout(onDismiss, 3000);
+    // Auto-dismiss after 5 seconds for events the player opted to not pause for
+    if (autoDismiss) {
+      timerRef.current = window.setTimeout(onDismiss, 5000);
     }
     return () => {
       if (timerRef.current !== null) {
         clearTimeout(timerRef.current);
       }
     };
-  }, [event.firstTime, onDismiss]);
+  }, [autoDismiss, onDismiss]);
 
   const typeClass = `event-modal-${event.type}`;
 
-  if (event.firstTime) {
-    // Full modal with backdrop for first-time events
+  if (!autoDismiss) {
+    // Full modal with backdrop — player hasn't opted out yet
     return (
-      <div className="event-modal-overlay" onClick={onDismiss}>
+      <div className="event-modal-overlay">
         <div
           className={`event-modal ${typeClass}`}
           onClick={(e) => e.stopPropagation()}
@@ -34,15 +36,20 @@ export function EventModal({ event, onDismiss }: EventModalProps) {
           <div className="event-modal-year">Year {event.year.toLocaleString()}</div>
           <h3 className="event-modal-title">{event.title}</h3>
           <p className="event-modal-message">{event.message}</p>
-          <button className="event-modal-btn" onClick={onDismiss}>
-            Continue
-          </button>
+          <div className="event-modal-actions">
+            <button className="event-modal-btn" onClick={onDismiss}>
+              Continue
+            </button>
+            <button className="event-modal-btn-secondary" onClick={onDismissNoPause}>
+              Don't pause for this again
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Toast-style notification for seen events
+  // Toast-style notification for auto-dismissed events (5s display)
   return (
     <div className={`event-toast ${typeClass}`} onClick={onDismiss}>
       <div className="event-toast-header">

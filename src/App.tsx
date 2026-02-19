@@ -25,6 +25,10 @@ function App() {
     dispatch({ type: "dismiss_event" });
   }, [dispatch]);
 
+  const handleDismissEventNoPause = useCallback(() => {
+    dispatch({ type: "dismiss_event_no_pause" });
+  }, [dispatch]);
+
   const handleDismissRunSummary = useCallback(() => {
     setSummaryDismissedAtRun(state.totalRuns);
   }, [state.totalRuns]);
@@ -80,7 +84,12 @@ function App() {
 
       {/* Event popup modal */}
       {pendingEvent && (
-        <EventModal event={pendingEvent} onDismiss={handleDismissEvent} />
+        <EventModal
+          event={pendingEvent}
+          autoDismiss={state.autoDismissEventTypes.includes(pendingEvent.eventId)}
+          onDismiss={handleDismissEvent}
+          onDismissNoPause={handleDismissEventNoPause}
+        />
       )}
 
       {/* Run summary modal (collapse/victory) */}

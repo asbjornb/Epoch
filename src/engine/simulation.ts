@@ -219,6 +219,7 @@ export function tick(state: GameState): GameState {
       const raidMsg = `Raiders repelled! Defense held (${Math.floor(totalDefense)}/${RAIDER_STRENGTH_REQUIRED}). Gained ${foodBonus} food, ${materialBonus} materials, and military XP.`;
       log.push({ year: run.year, message: raidMsg, type: "success" });
       const firstTime = !state.seenEventTypes.includes("raider_survived");
+      const shouldPause = !state.autoDismissEventTypes.includes("raider_survived");
       pendingEvents.push({
         eventId: "raider_survived",
         title: "Raiders Repelled!",
@@ -227,7 +228,7 @@ export function tick(state: GameState): GameState {
         year: run.year,
         firstTime,
       });
-      if (firstTime) {
+      if (shouldPause) {
         run.status = "paused";
         run.pausedByEvent = true;
       }
@@ -239,6 +240,7 @@ export function tick(state: GameState): GameState {
     const winterMsg = `The Great Cold begins. Farming disabled, food consumption doubled. Food stored: ${Math.floor(resources.food)}/${Math.floor(resources.foodStorage)}.`;
     log.push({ year: run.year, message: winterMsg, type: "warning" });
     const firstTime = !state.seenEventTypes.includes("winter_start");
+    const shouldPause = !state.autoDismissEventTypes.includes("winter_start");
     pendingEvents.push({
       eventId: "winter_start",
       title: "The Great Cold",
@@ -247,7 +249,7 @@ export function tick(state: GameState): GameState {
       year: run.year,
       firstTime,
     });
-    if (firstTime) {
+    if (shouldPause) {
       run.status = "paused";
       run.pausedByEvent = true;
     }
@@ -257,6 +259,7 @@ export function tick(state: GameState): GameState {
       const winterEndMsg = "The Great Cold ends. Your civilization survived!";
       log.push({ year: run.year, message: winterEndMsg, type: "success" });
       const firstTime = !state.seenEventTypes.includes("winter_end");
+      const shouldPause = !state.autoDismissEventTypes.includes("winter_end");
       pendingEvents.push({
         eventId: "winter_end",
         title: "Spring Returns",
@@ -265,7 +268,7 @@ export function tick(state: GameState): GameState {
         year: run.year,
         firstTime,
       });
-      if (firstTime) {
+      if (shouldPause) {
         run.status = "paused";
         run.pausedByEvent = true;
       }
