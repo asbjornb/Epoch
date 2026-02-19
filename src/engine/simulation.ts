@@ -17,10 +17,10 @@ import type { DisasterInfo } from "../types/game.ts";
 const FOOD_PER_POP = 1;
 const WINTER_FOOD_PER_POP = 2; // doubled consumption during Great Cold
 const POP_GROWTH_THRESHOLD = 20; // surplus food needed for pop growth
-const RAIDER_YEAR = 2000;
+const RAIDER_YEAR = 1500;
 const RAIDER_STRENGTH_REQUIRED = 30;
-const WINTER_START = 5000;
-const WINTER_END = 5500;
+const WINTER_START = 4000;
+const WINTER_END = 4500;
 const INITIAL_MAX_POP = 8;
 const INITIAL_FOOD_STORAGE = 200;
 const SPOILAGE_RATE = 0.02; // 2% of excess food spoils per tick

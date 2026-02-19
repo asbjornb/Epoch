@@ -250,7 +250,7 @@ export function useGame() {
       stopInterval();
       intervalRef.current = window.setInterval(() => {
         dispatch({ type: "tick" });
-      }, 200); // 5 ticks per second
+      }, 100); // 10 ticks per second
     } else {
       stopInterval();
     }
