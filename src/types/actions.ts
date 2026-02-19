@@ -36,6 +36,15 @@ export const ACTION_DEFS: ActionDef[] = [
     materialCost: 50,
   },
   {
+    id: "build_wall",
+    name: "Build Wall",
+    description: "Fortify defenses. Adds wall defense against raiders. Costs 30 materials.",
+    skill: "building",
+    baseDuration: 160,
+    unlockLevel: 4,
+    materialCost: 30,
+  },
+  {
     id: "train_militia",
     name: "Train Militia",
     description: "Raise military strength. Needed to repel raiders.",
@@ -46,7 +55,7 @@ export const ACTION_DEFS: ActionDef[] = [
   {
     id: "research_tools",
     name: "Research Tools",
-    description: "Improve technology. Boosts all skill efficiency.",
+    description: "Improve technology. Each completion boosts all output by 10%.",
     skill: "research",
     baseDuration: 180,
     unlockLevel: 0,
@@ -58,6 +67,14 @@ export const ACTION_DEFS: ActionDef[] = [
     skill: "military",
     baseDuration: 60,
     unlockLevel: 3,
+  },
+  {
+    id: "preserve_food",
+    name: "Preserve Food",
+    description: "Apply preservation techniques. Produces food even in winter.",
+    skill: "research",
+    baseDuration: 140,
+    unlockLevel: 5,
   },
 ];
 

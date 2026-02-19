@@ -193,6 +193,13 @@ h1, h2, h3 {
   min-width: 30px;
 }
 
+.resource-extra {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-left: 2px;
+}
+
 .resource-label {
   font-size: 0.7rem;
   text-transform: uppercase;
