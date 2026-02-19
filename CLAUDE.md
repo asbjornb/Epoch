@@ -23,4 +23,4 @@ npm run preview    # Preview production build locally
 
 ## Deployment
 
-GitHub Pages via GitHub Actions. Pushes to `master` trigger automatic builds and deploys. Base path is `/Epoch/`.
+GitHub Pages via GitHub Actions. Pushes to `main` trigger automatic builds and deploys. Base path is `/Epoch/`.
