@@ -13,11 +13,18 @@ const SKILL_META: { id: SkillName; name: string; color: string }[] = [
 ];
 
 export function SkillsPanel({ skills }: SkillsPanelProps) {
+  const visible = SKILL_META.filter(({ id }) => {
+    const s = skills[id];
+    return s.level > 0 || s.xp > 0;
+  });
+
+  if (visible.length === 0) return null;
+
   return (
     <div className="skills-panel">
       <h3>Skills <span className="skills-persist-tag">persist</span></h3>
       <div className="skills-list">
-        {SKILL_META.map(({ id, name, color }) => {
+        {visible.map(({ id, name, color }) => {
           const s = skills[id];
           const xpNeeded = xpForLevel(s.level + 1);
           const xpPrev = xpForLevel(s.level);
