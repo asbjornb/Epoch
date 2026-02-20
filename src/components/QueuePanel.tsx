@@ -56,7 +56,7 @@ export function ActionPalette({
   return (
     <div className="action-palette">
       <div className="palette-label">
-        Actions
+        <span className="palette-label-text">Actions</span>
         <HintButton state={state} />
       </div>
       <div className="palette-grid">
