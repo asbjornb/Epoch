@@ -468,8 +468,8 @@ function applyActionCompletion(
       if (!resources.researchedTechs.includes("research_storage")) {
         resources.researchedTechs = [...resources.researchedTechs, "research_storage"];
       }
-      resources.foodStorage += 200;
-      log.push({ year, message: `Storage researched. Food storage +200 (now ${Math.floor(resources.foodStorage)}).`, type: "info" });
+      resources.foodStorage += 100;
+      log.push({ year, message: `Food Preservation researched. Food storage +100 (now ${Math.floor(resources.foodStorage)}).`, type: "info" });
       break;
     case "research_fortification":
       if (!resources.researchedTechs.includes("research_fortification")) {
@@ -530,7 +530,7 @@ function applyCompletionPreview(
       if (!resources.researchedTechs.includes("research_storage")) {
         resources.researchedTechs = [...resources.researchedTechs, "research_storage"];
       }
-      resources.foodStorage += 200;
+      resources.foodStorage += 100;
       break;
     case "research_fortification":
       if (!resources.researchedTechs.includes("research_fortification")) {
