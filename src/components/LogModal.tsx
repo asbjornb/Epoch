@@ -5,6 +5,7 @@ import { getActionDef } from "../types/actions.ts";
 interface LogModalProps {
   log: LogEntry[];
   runHistory: RunHistoryEntry[];
+  totalRuns: number;
   onClose: () => void;
 }
 
@@ -105,8 +106,117 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export function LogModal({ log, runHistory, onClose }: LogModalProps) {
-  const [tab, setTab] = useState<"log" | "history">("log");
+function StatisticsPanel({
+  runHistory,
+  totalRuns,
+}: {
+  runHistory: RunHistoryEntry[];
+  totalRuns: number;
+}) {
+  const victories = runHistory.filter((r) => r.outcome === "victory").length;
+  const collapses = runHistory.filter((r) => r.outcome === "collapsed").length;
+  const abandoned = runHistory.filter((r) => r.outcome === "abandoned").length;
+
+  const bestYear =
+    runHistory.length > 0
+      ? Math.max(...runHistory.map((r) => r.year))
+      : 0;
+
+  const avgYear =
+    runHistory.length > 0
+      ? Math.round(
+          runHistory.reduce((sum, r) => sum + r.year, 0) / runHistory.length,
+        )
+      : 0;
+
+  // Find most common collapse reason
+  const collapseReasons = runHistory
+    .filter((r) => r.outcome === "collapsed" && r.collapseReason)
+    .map((r) => r.collapseReason!);
+  const reasonCounts = new Map<string, number>();
+  for (const reason of collapseReasons) {
+    reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1);
+  }
+  const topCollapse = [...reasonCounts.entries()].sort(
+    (a, b) => b[1] - a[1],
+  )[0];
+
+  return (
+    <div className="stats-panel">
+      <div className="stats-section">
+        <div className="stats-section-label">Overview</div>
+        <div className="stats-grid">
+          <div className="stats-card">
+            <span className="stats-card-value">{totalRuns + 1}</span>
+            <span className="stats-card-label">Current Run</span>
+          </div>
+          <div className="stats-card">
+            <span className="stats-card-value">{totalRuns}</span>
+            <span className="stats-card-label">Completed</span>
+          </div>
+          <div className="stats-card">
+            <span className="stats-card-value stats-victory">{victories}</span>
+            <span className="stats-card-label">Victories</span>
+          </div>
+          <div className="stats-card">
+            <span className="stats-card-value stats-collapse">{collapses}</span>
+            <span className="stats-card-label">Collapses</span>
+          </div>
+        </div>
+      </div>
+
+      {runHistory.length > 0 && (
+        <div className="stats-section">
+          <div className="stats-section-label">Year Reached</div>
+          <div className="stats-grid">
+            <div className="stats-card">
+              <span className="stats-card-value">Y{bestYear}</span>
+              <span className="stats-card-label">Best</span>
+            </div>
+            <div className="stats-card">
+              <span className="stats-card-value">Y{avgYear}</span>
+              <span className="stats-card-label">Average</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {topCollapse && (
+        <div className="stats-section">
+          <div className="stats-section-label">Top Collapse Reason</div>
+          <div className="stats-collapse-reason">
+            <span className="stats-collapse-reason-text">
+              {topCollapse[0]}
+            </span>
+            <span className="stats-collapse-reason-count">
+              {topCollapse[1]}x
+            </span>
+          </div>
+        </div>
+      )}
+
+      {abandoned > 0 && (
+        <div className="stats-section">
+          <div className="stats-grid">
+            <div className="stats-card">
+              <span className="stats-card-value stats-dim">{abandoned}</span>
+              <span className="stats-card-label">Abandoned</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {runHistory.length === 0 && (
+        <div className="log-empty">
+          Complete a run to see statistics here.
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function LogModal({ log, runHistory, totalRuns, onClose }: LogModalProps) {
+  const [tab, setTab] = useState<"log" | "history" | "stats">("log");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -132,6 +242,12 @@ export function LogModal({ log, runHistory, onClose }: LogModalProps) {
             >
               Run History
             </button>
+            <button
+              className={`log-modal-tab${tab === "stats" ? " active" : ""}`}
+              onClick={() => setTab("stats")}
+            >
+              Statistics
+            </button>
           </div>
           <button className="log-modal-close" onClick={onClose}>
             ✕
@@ -154,6 +270,9 @@ export function LogModal({ log, runHistory, onClose }: LogModalProps) {
           )}
           {tab === "history" && (
             <RunHistoryPanel runHistory={runHistory} />
+          )}
+          {tab === "stats" && (
+            <StatisticsPanel runHistory={runHistory} totalRuns={totalRuns} />
           )}
         </div>
       </div>

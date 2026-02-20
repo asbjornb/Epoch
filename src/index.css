@@ -1727,6 +1727,91 @@ h1, h2, h3 {
   color: var(--text);
 }
 
+/* ===== Statistics Panel ===== */
+.stats-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stats-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stats-section-label {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.stats-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 8px;
+  gap: 2px;
+}
+
+.stats-card-value {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-card-value.stats-victory {
+  color: var(--success);
+}
+
+.stats-card-value.stats-collapse {
+  color: var(--danger);
+}
+
+.stats-card-value.stats-dim {
+  color: var(--text-dim);
+}
+
+.stats-card-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.stats-collapse-reason {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(184, 92, 92, 0.1);
+  border: 1px solid rgba(184, 92, 92, 0.15);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.stats-collapse-reason-text {
+  font-size: 0.78rem;
+  color: var(--danger);
+}
+
+.stats-collapse-reason-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ===== Settings Modal ===== */
 .settings-modal-overlay {
   position: fixed;
