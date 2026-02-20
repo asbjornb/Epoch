@@ -21,6 +21,10 @@ npm run preview    # Preview production build locally
 - `src/hooks/` - Custom React hooks (useGame.ts manages all game state)
 - `src/types/` - TypeScript type definitions (game state, action definitions)
 
+## Compatibility
+
+No current users. Backwards compatibility is not required until v1.
+
 ## Deployment
 
 GitHub Pages via GitHub Actions. Pushes to `main` trigger automatic builds and deploys. Base path is `/Epoch/`.
