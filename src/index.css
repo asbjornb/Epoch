@@ -283,6 +283,15 @@ h1, h2, h3 {
   border-color: var(--accent-hover);
 }
 
+.ctrl-btn.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.ctrl-btn.danger:hover {
+  background: rgba(184, 92, 92, 0.15);
+}
+
 .ctrl-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
