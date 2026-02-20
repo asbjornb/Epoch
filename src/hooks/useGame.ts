@@ -26,7 +26,7 @@ export type GameAction =
   | { type: "queue_set_repeat"; uid: string; repeat: number }
   | { type: "queue_clear" }
   | { type: "queue_load"; queue: QueueEntry[]; repeatLastAction: boolean }
-  | { type: "force_collapse" }
+  | { type: "force_collapse"; reason?: string }
   | { type: "import_save"; state: GameState }
   | { type: "hard_reset" }
   | { type: "reset_auto_dismiss"; eventId: string }
@@ -250,7 +250,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // When food cap is reached, unlock the other starting actions
       const { resources } = tickedState.run;
       if (resources.food >= resources.foodStorage) {
-        const startingUnlocks: ActionId[] = ["gather_materials", "train_militia", "research_tools"];
+        const startingUnlocks: ActionId[] = ["gather_wood", "train_militia", "research_tools"];
         const missing = startingUnlocks.filter(id => !tickedState.unlockedActions.includes(id));
         if (missing.length > 0) {
           const unlockedActions = [...tickedState.unlockedActions, ...missing];
@@ -262,7 +262,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           run.pendingEvents = [...run.pendingEvents, {
             eventId: "food_cap_unlock",
             title: "New Skills Discovered",
-            message: "Your food stores are full. Your people now have time to explore new pursuits: gathering materials, military training, and tool research.",
+            message: "Your food stores are full. Your people now have time to explore new pursuits: gathering wood, military training, and tool research.",
             type: "success" as const,
             year: run.year,
             firstTime,
@@ -469,10 +469,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "queue_add": {
+      const def = getActionDef(action.actionId);
+      // Research techs are single-use: don't add if already in queue
+      if (def?.category === "research" && state.run.queue.some((e) => e.actionId === action.actionId)) {
+        return state;
+      }
       const entry: QueueEntry = {
         uid: makeUid(),
         actionId: action.actionId,
-        repeat: action.repeat ?? 1,
+        repeat: def?.category === "research" ? 1 : (action.repeat ?? 1),
       };
       const run = { ...state.run, queue: [...state.run.queue, entry] };
       return { ...state, run };
@@ -496,9 +501,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "queue_set_repeat": {
-      const queue = state.run.queue.map((e) =>
-        e.uid === action.uid ? { ...e, repeat: action.repeat } : e,
-      );
+      const queue = state.run.queue.map((e) => {
+        if (e.uid !== action.uid) return e;
+        // Research techs are single-use: always repeat 1
+        const eDef = getActionDef(e.actionId);
+        if (eDef?.category === "research") return e;
+        return { ...e, repeat: action.repeat };
+      });
       const run = { ...state.run, queue };
       return { ...state, run };
     }
@@ -525,7 +534,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const run = {
         ...state.run,
         status: "collapsed" as const,
-        collapseReason: "You abandoned your civilization.",
+        collapseReason: action.reason ?? "You abandoned your civilization.",
       };
       return { ...state, run };
     }

@@ -13,11 +13,11 @@ export interface Resources {
   preservedFood: number;
   population: number;
   maxPopulation: number;
-  materials: number;
+  wood: number;
   militaryStrength: number;
   wallDefense: number;
   foodStorage: number;
-  techLevel: number;
+  researchedTechs: ActionId[];
 }
 
 export type ActionId =
@@ -27,7 +27,11 @@ export type ActionId =
   | "build_wall"
   | "train_militia"
   | "research_tools"
-  | "gather_materials"
+  | "research_agriculture"
+  | "research_storage"
+  | "research_fortification"
+  | "research_tactics"
+  | "gather_wood"
   | "scout"
   | "cure_food"
   | "winter_hunt";
@@ -40,7 +44,7 @@ export interface ActionDef {
   category: ActionCategory;
   baseDuration: number;
   unlockLevel: number;
-  materialCost?: number;
+  woodCost?: number;
 }
 
 export interface QueueEntry {

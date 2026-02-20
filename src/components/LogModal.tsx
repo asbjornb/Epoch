@@ -43,7 +43,7 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
   const r = entry.resources;
   const hasWaste =
     Math.floor(r.food) > 0 ||
-    Math.floor(r.materials) > 0 ||
+    Math.floor(r.wood) > 0 ||
     (entry.totalFoodSpoiled ?? 0) > 0;
 
   return (
@@ -80,7 +80,7 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
             <div className="run-history-stats">
               <Stat label="Pop" value={`${r.population}/${r.maxPopulation}`} />
               <Stat label="Defense" value={`${Math.floor(r.militaryStrength)}+${Math.floor(r.wallDefense)}w`} />
-              <Stat label="Tech" value={r.techLevel} />
+              <Stat label="Tech" value={r.researchedTechs?.length ?? 0} />
             </div>
           </div>
 
@@ -91,8 +91,8 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
                 {Math.floor(r.food) > 0 && (
                   <Stat label="Food left" value={Math.floor(r.food)} warn />
                 )}
-                {Math.floor(r.materials) > 0 && (
-                  <Stat label="Materials left" value={Math.floor(r.materials)} warn />
+                {Math.floor(r.wood) > 0 && (
+                  <Stat label="Wood left" value={Math.floor(r.wood)} warn />
                 )}
                 {(entry.totalFoodSpoiled ?? 0) > 0 && (
                   <Stat label="Food spoiled" value={Math.floor(entry.totalFoodSpoiled!)} warn />
