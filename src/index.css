@@ -290,75 +290,6 @@ h1, h2, h3 {
   opacity: 0.7;
 }
 
-.auto-restart-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  user-select: none;
-  position: relative;
-}
-
-.auto-restart-toggle input[type="checkbox"] {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
-.auto-restart-label {
-  white-space: nowrap;
-  padding-left: 30px;
-  position: relative;
-  line-height: 16px;
-}
-
-/* Toggle track */
-.auto-restart-label::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 26px;
-  height: 14px;
-  border-radius: 7px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-/* Toggle knob */
-.auto-restart-label::after {
-  content: '';
-  position: absolute;
-  left: 3px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--text-dim);
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-
-/* Checked states */
-.auto-restart-toggle input[type="checkbox"]:checked + .auto-restart-label::before {
-  background: rgba(196, 154, 60, 0.25);
-  border-color: var(--accent);
-}
-
-.auto-restart-toggle input[type="checkbox"]:checked + .auto-restart-label::after {
-  transform: translateY(-50%) translateX(12px);
-  background: var(--accent);
-}
-
-.auto-restart-toggle input[type="checkbox"]:checked + .auto-restart-label {
-  color: var(--text);
-}
 
 /* ===== Queue Panel (central element) ===== */
 .queue-panel {
@@ -724,34 +655,82 @@ h1, h2, h3 {
   color: var(--danger);
 }
 
-.queue-repeat-toggle {
+/* Queue toggle settings area */
+.queue-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.queue-toggle-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 8px;
   width: 100%;
-  padding: 5px 0;
-  font-size: 0.7rem;
+  padding: 6px 10px;
+  font-size: 0.72rem;
   color: var(--text-dim);
-  background: none;
+  background: var(--bg);
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.queue-repeat-toggle:hover {
+.queue-toggle-row:hover {
   background: var(--bg-hover);
   color: var(--text);
 }
 
-.queue-repeat-toggle.active {
+.queue-toggle-row.active {
   color: var(--accent);
   border-color: rgba(196, 154, 60, 0.25);
 }
 
-.queue-repeat-toggle-icon {
-  font-size: 0.8rem;
+.queue-toggle-label {
+  flex: 1;
+  text-align: left;
+  line-height: 1.3;
+}
+
+.queue-toggle-switch {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.queue-toggle-track {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.queue-toggle-knob {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.queue-toggle-row.active .queue-toggle-track {
+  background: rgba(196, 154, 60, 0.25);
+  border-color: var(--accent);
+}
+
+.queue-toggle-row.active .queue-toggle-knob {
+  transform: translateY(-50%) translateX(12px);
+  background: var(--accent);
 }
 
 /* Queue bottom actions */
