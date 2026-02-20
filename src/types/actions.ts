@@ -89,12 +89,13 @@ export const ACTION_DEFS: ActionDef[] = [
   {
     id: "research_fortification",
     name: "Fortification",
-    description: "Defensive engineering. ×1.20 total defense.",
+    description: "Defensive engineering. Requires a wall. ×1.20 total defense.",
     skill: "research",
     category: "research",
     baseDuration: 200,
     unlockLevel: 4,
     woodCost: 10,
+    requiredWalls: 1,
   },
   {
     id: "research_tactics",
