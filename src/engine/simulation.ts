@@ -148,6 +148,38 @@ function getPopulationOutputMultiplier(population: number, category: ActionCateg
   return 1;
 }
 
+/** Append a concise run-end summary to the log, mirroring what Run History shows. */
+function pushRunSummaryLog(
+  log: LogEntry[],
+  year: number,
+  resources: Resources,
+  totalFoodSpoiled: number,
+): void {
+  const defense = Math.floor(getTotalDefense(resources));
+  const parts: string[] = [
+    `Pop ${resources.population}/${resources.maxPopulation}`,
+    `Defense ${defense}`,
+  ];
+  if (resources.researchedTechs.length > 0) {
+    parts.push(`Tech ${resources.researchedTechs.length}`);
+  }
+  const foodLeft = Math.floor(resources.food);
+  const woodLeft = Math.floor(resources.wood);
+  const spoiled = Math.floor(totalFoodSpoiled);
+  const wasteParts: string[] = [];
+  if (foodLeft > 0) wasteParts.push(`${foodLeft} food`);
+  if (woodLeft > 0) wasteParts.push(`${woodLeft} wood`);
+  if (spoiled > 0) wasteParts.push(`${spoiled} spoiled`);
+  if (wasteParts.length > 0) {
+    parts.push(`Remaining: ${wasteParts.join(", ")}`);
+  }
+  log.push({
+    year,
+    message: parts.join(" · "),
+    type: "info",
+  });
+}
+
 function getCurrentQueueEntry(run: RunState): { entry: QueueEntry; index: number } | null {
   if (run.queue.length === 0) return null;
 
@@ -354,6 +386,7 @@ export function tick(state: GameState): GameState {
         message: run.collapseReason,
         type: "danger",
       });
+      pushRunSummaryLog(log, run.year, resources, run.totalFoodSpoiled);
     } else {
       // Reward for surviving raiders
       const foodBonus = 50;
@@ -431,6 +464,7 @@ export function tick(state: GameState): GameState {
       message: run.collapseReason,
       type: "danger",
     });
+    pushRunSummaryLog(log, run.year, resources, run.totalFoodSpoiled);
   }
 
   // Check victory
@@ -441,6 +475,7 @@ export function tick(state: GameState): GameState {
       message: "Civilization survived the full epoch! Victory!",
       type: "success",
     });
+    pushRunSummaryLog(log, run.year, resources, run.totalFoodSpoiled);
   }
 
   run.resources = resources;
