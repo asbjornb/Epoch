@@ -1683,17 +1683,6 @@ h1, h2, h3 {
   line-height: 1.4;
 }
 
-.run-summary-encouragement {
-  font-size: 0.82rem;
-  color: var(--success);
-  background: rgba(106, 143, 92, 0.1);
-  border: 1px solid rgba(106, 143, 92, 0.2);
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-bottom: 14px;
-  line-height: 1.4;
-}
-
 .run-summary-year {
   display: flex;
   gap: 16px;

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import type {
   GameState,
-  RunState,
   QueueEntry,
   ActionId,
   RunHistoryEntry,
@@ -289,13 +288,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           const shouldPause = !tickedState.autoDismissEventTypes.includes("food_cap_unlock");
           const firstTime = !tickedState.seenEventTypes.includes("food_cap_unlock");
           const run = { ...tickedState.run };
-          const foodCapMessage = firstTime
-            ? "Your food stores are full! With survival secured, your people discover new pursuits: gathering wood, military training, and tool research. Level up these skills to unlock buildings and technologies. Plan carefully — raiders will test your defenses at year 1,500."
-            : "Your food stores are full. Your people now have time to explore new pursuits: gathering wood, military training, and tool research.";
           run.pendingEvents = [...run.pendingEvents, {
             eventId: "food_cap_unlock",
             title: "New Skills Discovered",
-            message: foodCapMessage,
+            message: "Your food stores are full. Your people now have time to explore new pursuits: gathering wood, military training, and tool research.",
             type: "success" as const,
             year: run.year,
             firstTime,
@@ -324,25 +320,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "start_run": {
-      // Welcome event on very first run — pause immediately so the player reads it
-      const showWelcome = state.totalRuns === 0 && !state.seenEventTypes.includes("welcome");
-      const run = {
-        ...state.run,
-        status: (showWelcome ? "paused" : "running") as RunState["status"],
-        pausedByEvent: showWelcome ? true : state.run.pausedByEvent,
-      };
-
-      if (showWelcome) {
-        run.pendingEvents = [...run.pendingEvents, {
-          eventId: "welcome",
-          title: "A New Beginning",
-          message: "Your civilization starts small — just a few people and a patch of farmland. For now, farming is all you know. Don't worry. As your food stores fill, new skills will emerge. And when this generation eventually falls, all knowledge carries forward. Each run, your people grow stronger.",
-          type: "success" as const,
-          year: 0,
-          firstTime: true,
-        }];
-      }
-
+      const run = { ...state.run, status: "running" as const };
       return { ...state, run, skillsAtRunStart: cloneSkills(state.skills) };
     }
 
