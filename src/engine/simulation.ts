@@ -5,6 +5,7 @@ import type {
   LogEntry,
   QueueEntry,
   EventPopup,
+  Skills,
 } from "../types/game.ts";
 import { getActionDef } from "../types/actions.ts";
 import {
@@ -371,4 +372,145 @@ function applyActionCompletion(
       log.push({ year, message: `Food preservation improved. Storage now ${Math.floor(resources.foodStorage)}.`, type: "info" });
       break;
   }
+}
+
+function applyActionCompletionSilent(
+  actionId: string,
+  resources: Resources,
+  outputMult: number,
+): void {
+  switch (actionId) {
+    case "build_hut":
+      resources.maxPopulation += 3;
+      break;
+    case "build_granary":
+      resources.foodStorage += Math.floor(150 * outputMult);
+      break;
+    case "build_wall":
+      resources.wallDefense += Math.floor(8 * outputMult);
+      break;
+    case "research_tools":
+      resources.techLevel += 1;
+      break;
+    case "preserve_food":
+      resources.foodStorage += Math.floor(30 * outputMult);
+      break;
+  }
+}
+
+export interface QueuePreview {
+  resources: Resources;
+  yearReached: number;
+  collapsed: boolean;
+}
+
+/** Simulate the queue from a fresh run using given skills. Skips events. */
+export function simulateQueue(startingSkills: Skills, queue: QueueEntry[]): QueuePreview {
+  if (queue.length === 0) {
+    return { resources: createInitialResources(), yearReached: 0, collapsed: false };
+  }
+
+  const resources = createInitialResources();
+  const skills: Skills = {
+    farming: { ...startingSkills.farming },
+    building: { ...startingSkills.building },
+    research: { ...startingSkills.research },
+    military: { ...startingSkills.military },
+  };
+  let year = 0;
+  const maxYear = 10000;
+  let currentQueueIndex = 0;
+  let currentActionProgress = 0;
+
+  const getCurrent = (): QueueEntry | null => {
+    if (queue.length === 0) return null;
+    let logicalPos = 0;
+    for (let i = 0; i < queue.length; i++) {
+      const repeats = queue[i].repeat === -1 ? Infinity : queue[i].repeat;
+      if (logicalPos + repeats > currentQueueIndex) {
+        return queue[i];
+      }
+      logicalPos += repeats;
+      if (i === queue.length - 1) {
+        return queue[queue.length - 1];
+      }
+    }
+    return null;
+  };
+
+  while (year < maxYear) {
+    year++;
+    const isWinter = year >= WINTER_START && year <= WINTER_END;
+
+    // Food consumption
+    const foodPerPop = isWinter ? WINTER_FOOD_PER_POP : FOOD_PER_POP;
+    resources.food -= resources.population * foodPerPop;
+
+    // Starvation
+    if (resources.food < 0) {
+      const deaths = Math.min(
+        resources.population,
+        Math.ceil(Math.abs(resources.food) / 2),
+      );
+      resources.population = Math.max(0, resources.population - deaths);
+      resources.food = 0;
+    }
+
+    if (resources.population <= 0) {
+      return { resources, yearReached: year, collapsed: true };
+    }
+
+    // Spoilage
+    if (resources.food > resources.foodStorage) {
+      const excess = resources.food - resources.foodStorage;
+      resources.food -= Math.ceil(excess * SPOILAGE_RATE);
+    }
+
+    // Pop growth
+    if (
+      !isWinter &&
+      resources.population < resources.maxPopulation &&
+      resources.food > resources.population * FOOD_PER_POP + POP_GROWTH_THRESHOLD
+    ) {
+      resources.population++;
+    }
+
+    // Process action
+    const entry = getCurrent();
+    if (entry) {
+      const def = getActionDef(entry.actionId);
+      if (def) {
+        const skillLevel = skills[def.skill].level;
+        const duration = getEffectiveDuration(def.baseDuration, skillLevel);
+        const outputMult =
+          getSkillOutputMultiplier(skillLevel) *
+          getTechMultiplier(resources.techLevel) *
+          getPopulationMultiplier(resources.population);
+
+        if (
+          currentActionProgress === 0 &&
+          def.materialCost &&
+          def.materialCost > resources.materials
+        ) {
+          currentQueueIndex++;
+        } else {
+          if (currentActionProgress === 0 && def.materialCost) {
+            resources.materials -= def.materialCost;
+          }
+
+          applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
+          skills[def.skill] = addXp(skills[def.skill], 1);
+          currentActionProgress++;
+
+          if (currentActionProgress >= duration) {
+            applyActionCompletionSilent(entry.actionId, resources, outputMult);
+            currentActionProgress = 0;
+            currentQueueIndex++;
+          }
+        }
+      }
+    }
+  }
+
+  return { resources, yearReached: year, collapsed: false };
 }

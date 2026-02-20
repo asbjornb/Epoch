@@ -577,6 +577,56 @@ h1, h2, h3 {
   padding: 1px 5px;
   border-radius: 4px;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.queue-item-repeat:hover {
+  border-color: var(--border-light);
+  background: var(--bg-hover);
+}
+
+.queue-item-repeat-edit {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.repeat-input {
+  width: 44px;
+  font-size: 0.7rem;
+  padding: 1px 4px;
+  border-radius: 4px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+
+.repeat-input::-webkit-outer-spin-button,
+.repeat-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.repeat-inf-btn {
+  width: 22px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.repeat-inf-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-bright);
 }
 
 .queue-item-timer {
@@ -649,6 +699,63 @@ h1, h2, h3 {
 .queue-clear-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* Queue Preview */
+.queue-preview {
+  background: rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.queue-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.queue-preview-label {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.queue-preview-year {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.queue-preview-resources {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.queue-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.queue-preview-icon {
+  font-size: 0.8rem;
+}
+
+.queue-preview-val {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--text-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+.queue-preview-extra {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Saved queues */
