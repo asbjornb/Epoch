@@ -264,6 +264,9 @@ function QueuePreviewDisplay({
   const items: { label: string; value: string }[] = [];
 
   items.push({ label: "Food", value: `${Math.floor(r.food)}` });
+  if (r.preservedFood > 0) {
+    items.push({ label: "Preserved", value: `${Math.floor(r.preservedFood)}` });
+  }
   items.push({ label: "Wood", value: `${Math.floor(r.wood)}` });
 
   const totalDef = Math.floor(r.militaryStrength + r.wallDefense);

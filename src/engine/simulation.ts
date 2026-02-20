@@ -26,12 +26,19 @@ const WINTER_END = 4500;
 const INITIAL_MAX_POP = 2;
 const INITIAL_FOOD_STORAGE = 200;
 const SPOILAGE_DIVISOR = 400; // tuning constant for quadratic spoilage curve
+const PRESERVED_SPOILAGE_DIVISOR = 800; // preserved food spoils at half the rate
 
 /** Smooth spoilage: scales quadratically with food, reduced by foodStorage.
  *  At base storage (200): ~0.5/tick at 200 food, ~2/tick at 400, ~3.1/tick at 500. */
 function calculateSpoilage(food: number, foodStorage: number): number {
   if (food <= 0 || foodStorage <= 0) return 0;
   return (food * food) / (SPOILAGE_DIVISOR * foodStorage);
+}
+
+/** Preserved food spoils separately at a lower rate. */
+function calculatePreservedSpoilage(preservedFood: number, foodStorage: number): number {
+  if (preservedFood <= 0 || foodStorage <= 0) return 0;
+  return (preservedFood * preservedFood) / (PRESERVED_SPOILAGE_DIVISOR * foodStorage);
 }
 
 export const DISASTERS: DisasterInfo[] = [
@@ -42,6 +49,7 @@ export const DISASTERS: DisasterInfo[] = [
 export function createInitialResources(): Resources {
   return {
     food: 2,
+    preservedFood: 0,
     population: 2,
     maxPopulation: INITIAL_MAX_POP,
     wood: 0,
@@ -155,18 +163,25 @@ export function tick(state: GameState): GameState {
   const isWinter = run.year >= WINTER_START && run.year <= WINTER_END;
 
   // Food consumption (doubled during winter)
+  // Eat from normal food first, then preserved food
   const foodPerPop = isWinter ? WINTER_FOOD_PER_POP : FOOD_PER_POP;
-  const foodConsumed = resources.population * foodPerPop;
-  resources.food -= foodConsumed;
+  let foodNeeded = resources.population * foodPerPop;
+  const fromFood = Math.min(resources.food, foodNeeded);
+  resources.food -= fromFood;
+  foodNeeded -= fromFood;
+  if (foodNeeded > 0) {
+    const fromPreserved = Math.min(resources.preservedFood, foodNeeded);
+    resources.preservedFood -= fromPreserved;
+    foodNeeded -= fromPreserved;
+  }
 
-  // Population starvation
-  if (resources.food < 0) {
+  // Population starvation (foodNeeded > 0 means not enough food of any kind)
+  if (foodNeeded > 0) {
     const deaths = Math.min(
       resources.population,
-      Math.ceil(Math.abs(resources.food) / 2),
+      Math.ceil(foodNeeded / 2),
     );
     resources.population = Math.max(0, resources.population - deaths);
-    resources.food = 0;
     if (deaths > 0) {
       log.push({
         year: run.year,
@@ -177,15 +192,19 @@ export function tick(state: GameState): GameState {
   }
 
   // Food spoilage: smooth quadratic curve, always applies
+  // Regular food and preserved food spoil independently
   const spoiled = calculateSpoilage(resources.food, resources.foodStorage);
-  if (spoiled > 0.001) {
+  const preservedSpoiled = calculatePreservedSpoilage(resources.preservedFood, resources.foodStorage);
+  const totalSpoiled = spoiled + preservedSpoiled;
+  if (totalSpoiled > 0.001) {
     resources.food -= spoiled;
-    run.totalFoodSpoiled = (run.totalFoodSpoiled || 0) + spoiled;
+    resources.preservedFood -= preservedSpoiled;
+    run.totalFoodSpoiled = (run.totalFoodSpoiled || 0) + totalSpoiled;
     // Log spoilage periodically (every 500 years)
     if (run.year % 500 === 0) {
       log.push({
         year: run.year,
-        message: `Food spoilage: ${spoiled.toFixed(1)}/yr lost. Total spoiled: ${Math.floor(run.totalFoodSpoiled)}.`,
+        message: `Food spoilage: ${totalSpoiled.toFixed(1)}/yr lost. Total spoiled: ${Math.floor(run.totalFoodSpoiled)}.`,
         type: "warning",
       });
     }
@@ -303,7 +322,8 @@ export function tick(state: GameState): GameState {
   // Winter event
   if (run.year === WINTER_START) {
     const winterSpoilage = calculateSpoilage(resources.food, resources.foodStorage);
-    const winterMsg = `The Great Cold begins. Farming disabled, food consumption doubled. Food: ${Math.floor(resources.food)} (spoilage: ${winterSpoilage.toFixed(1)}/yr).`;
+    const preservedNote = resources.preservedFood > 0 ? ` Preserved: ${Math.floor(resources.preservedFood)}.` : "";
+    const winterMsg = `The Great Cold begins. Farming disabled, food consumption doubled. Food: ${Math.floor(resources.food)} (spoilage: ${winterSpoilage.toFixed(1)}/yr).${preservedNote}`;
     log.push({ year: run.year, message: winterMsg, type: "warning" });
     const firstTime = !state.seenEventTypes.includes("winter_start");
     const shouldPause = !state.autoDismissEventTypes.includes("winter_start");
@@ -321,7 +341,7 @@ export function tick(state: GameState): GameState {
     }
   }
   if (run.year === WINTER_END) {
-    if (resources.population > 0 && resources.food > 0) {
+    if (resources.population > 0 && (resources.food > 0 || resources.preservedFood > 0)) {
       const winterEndMsg = "The Great Cold ends. Your civilization survived!";
       log.push({ year: run.year, message: winterEndMsg, type: "success" });
       const firstTime = !state.seenEventTypes.includes("winter_end");
@@ -398,13 +418,8 @@ function applyActionPerTick(
     case "scout":
       resources.militaryStrength += 0.05 * outputMult;
       break;
-    case "preserve_food":
-      // Produces food even in winter (at reduced rate when not winter)
-      if (isWinter) {
-        resources.food += 1 * outputMult;
-      } else {
-        resources.food += 0.5 * outputMult;
-      }
+    case "winter_hunt":
+      resources.food += 0.2 * outputMult;
       break;
   }
 }
@@ -461,10 +476,17 @@ function applyActionCompletion(
       }
       log.push({ year, message: "Tactics researched. Military training +50%.", type: "info" });
       break;
-    case "preserve_food":
-      resources.foodStorage += Math.floor(30 * outputMult);
-      log.push({ year, message: `Food preservation improved. Storage now ${Math.floor(resources.foodStorage)}.`, type: "info" });
+    case "cure_food": {
+      const amount = Math.min(100, resources.food);
+      if (amount > 0) {
+        resources.food -= amount;
+        resources.preservedFood += amount;
+        log.push({ year, message: `Cured ${Math.floor(amount)} food into preserved stores. Preserved: ${Math.floor(resources.preservedFood)}.`, type: "info" });
+      } else {
+        log.push({ year, message: `No food available to cure.`, type: "warning" });
+      }
       break;
+    }
   }
 }
 
@@ -510,9 +532,14 @@ function applyCompletionPreview(
         resources.researchedTechs = [...resources.researchedTechs, "research_tactics"];
       }
       break;
-    case "preserve_food":
-      resources.foodStorage += Math.floor(30 * outputMult);
+    case "cure_food": {
+      const amount = Math.min(100, resources.food);
+      if (amount > 0) {
+        resources.food -= amount;
+        resources.preservedFood += amount;
+      }
       break;
+    }
   }
 }
 
@@ -583,18 +610,25 @@ export function simulateQueuePreview(
     year++;
     const isWinter = year >= WINTER_START && year <= WINTER_END;
 
-    // Food consumption
+    // Food consumption — eat from normal food first, then preserved
     const foodPerPop = isWinter ? WINTER_FOOD_PER_POP : FOOD_PER_POP;
-    resources.food -= resources.population * foodPerPop;
+    let previewFoodNeeded = resources.population * foodPerPop;
+    const previewFromFood = Math.min(resources.food, previewFoodNeeded);
+    resources.food -= previewFromFood;
+    previewFoodNeeded -= previewFromFood;
+    if (previewFoodNeeded > 0) {
+      const previewFromPreserved = Math.min(resources.preservedFood, previewFoodNeeded);
+      resources.preservedFood -= previewFromPreserved;
+      previewFoodNeeded -= previewFromPreserved;
+    }
 
     // Starvation
-    if (resources.food < 0) {
+    if (previewFoodNeeded > 0) {
       const deaths = Math.min(
         resources.population,
-        Math.ceil(Math.abs(resources.food) / 2),
+        Math.ceil(previewFoodNeeded / 2),
       );
       resources.population = Math.max(0, resources.population - deaths);
-      resources.food = 0;
     }
 
     if (resources.population <= 0) {
@@ -602,10 +636,14 @@ export function simulateQueuePreview(
       break;
     }
 
-    // Spoilage (smooth quadratic)
+    // Spoilage (smooth quadratic) — separate for normal and preserved food
     const spoilage = calculateSpoilage(resources.food, resources.foodStorage);
     if (spoilage > 0.001) {
       resources.food -= spoilage;
+    }
+    const preservedSpoilagePreview = calculatePreservedSpoilage(resources.preservedFood, resources.foodStorage);
+    if (preservedSpoilagePreview > 0.001) {
+      resources.preservedFood -= preservedSpoilagePreview;
     }
 
     // Pop growth
