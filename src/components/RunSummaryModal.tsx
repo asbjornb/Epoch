@@ -86,6 +86,12 @@ export function RunSummaryModal({
           <p className="run-summary-reason">{run.collapseReason}</p>
         )}
 
+        {!isVictory && totalRuns <= 3 && (
+          <p className="run-summary-encouragement">
+            Your skills carry forward — the next generation starts where this one left off.
+          </p>
+        )}
+
         <div className="run-summary-year">
           <div className="run-summary-year-reached">
             <span className="run-summary-label">Year Reached</span>

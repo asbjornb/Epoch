@@ -300,6 +300,30 @@ export function tick(state: GameState): GameState {
     }
   }
 
+  // Tutorial events for first run (non-blocking toasts)
+  if (state.totalRuns === 0) {
+    if (run.year === 100) {
+      pendingEvents.push({
+        eventId: "tutorial_first_levelup",
+        title: "Skill Improved",
+        message: "Your farming skill grew! Higher levels mean faster actions and better yields. Food will start accumulating now.",
+        type: "success",
+        year: run.year,
+        firstTime: true,
+      });
+    }
+    if (run.year === 500) {
+      pendingEvents.push({
+        eventId: "tutorial_skills_persist",
+        title: "Knowledge Endures",
+        message: "Skills persist across generations. When this civilization eventually falls, the next will inherit everything you've learned — and grow even faster.",
+        type: "success",
+        year: run.year,
+        firstTime: true,
+      });
+    }
+  }
+
   // Raider event - walls and fortification multiply total defense
   if (run.year === RAIDER_YEAR) {
     const totalDefense = getTotalDefense(resources);
