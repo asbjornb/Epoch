@@ -52,8 +52,8 @@ export function ResourceBar({ resources, year, maxYear, encounteredDisasters }: 
           color="#968e82"
           extra={`/ ${resources.maxPopulation}`}
         />
-        {resources.materials > 0 && (
-          <ResourceItem label="Materials" value={Math.floor(resources.materials)} icon="🪨" color="#9a8a72" />
+        {resources.wood > 0 && (
+          <ResourceItem label="Wood" value={Math.floor(resources.wood)} icon="🪵" color="#9a8a72" />
         )}
         {resources.militaryStrength + resources.wallDefense > 0 && (
           <ResourceItem

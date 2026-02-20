@@ -65,8 +65,8 @@ export function ActionPalette({
               <span className="palette-action-icon">{SKILL_ICONS[a.skill]}</span>
               <span className="palette-action-name">{a.name}</span>
               <span className="palette-action-dur">{dur} years</span>
-              {a.materialCost && (
-                <span className="palette-action-cost">{a.materialCost} materials</span>
+              {a.woodCost && (
+                <span className="palette-action-cost">{a.woodCost} wood</span>
               )}
             </button>
           );
@@ -238,7 +238,7 @@ function QueuePreviewDisplay({
   const items: { label: string; value: string }[] = [];
 
   items.push({ label: "Food", value: `${Math.floor(r.food)}` });
-  items.push({ label: "Materials", value: `${Math.floor(r.materials)}` });
+  items.push({ label: "Wood", value: `${Math.floor(r.wood)}` });
 
   const totalDef = Math.floor(r.militaryStrength + r.wallDefense);
   if (totalDef > 0) {

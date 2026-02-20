@@ -36,7 +36,7 @@ export function createInitialResources(): Resources {
     food: 2,
     population: 2,
     maxPopulation: INITIAL_MAX_POP,
-    materials: 0,
+    wood: 0,
     militaryStrength: 0,
     wallDefense: 0,
     foodStorage: INITIAL_FOOD_STORAGE,
@@ -187,19 +187,19 @@ export function tick(state: GameState): GameState {
       const duration = getEffectiveDuration(def.baseDuration, skillLevel);
       const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
 
-      // Check material cost at start of action
-      if (run.currentActionProgress === 0 && def.materialCost && def.materialCost > resources.materials) {
+      // Check wood cost at start of action
+      if (run.currentActionProgress === 0 && def.woodCost && def.woodCost > resources.wood) {
         log.push({
           year: run.year,
-          message: `Cannot ${def.name}: need ${def.materialCost} materials (have ${Math.floor(resources.materials)}).`,
+          message: `Cannot ${def.name}: need ${def.woodCost} wood (have ${Math.floor(resources.wood)}).`,
           type: "warning",
         });
         run.currentActionProgress = 0;
         run.currentQueueIndex++;
       } else {
-        // Deduct materials at start of action
-        if (run.currentActionProgress === 0 && def.materialCost) {
-          resources.materials -= def.materialCost;
+        // Deduct wood at start of action
+        if (run.currentActionProgress === 0 && def.woodCost) {
+          resources.wood -= def.woodCost;
         }
 
         // Per-tick effects
@@ -234,11 +234,11 @@ export function tick(state: GameState): GameState {
     } else {
       // Reward for surviving raiders
       const foodBonus = Math.floor(50 * techMult);
-      const materialBonus = 20;
+      const woodBonus = 20;
       resources.food += foodBonus;
-      resources.materials += materialBonus;
+      resources.wood += woodBonus;
       skills.military = addXp(skills.military, 50);
-      const raidMsg = `Raiders repelled! Defense held (${Math.floor(totalDefense)}/${RAIDER_STRENGTH_REQUIRED}). Gained ${foodBonus} food, ${materialBonus} materials, and military XP.`;
+      const raidMsg = `Raiders repelled! Defense held (${Math.floor(totalDefense)}/${RAIDER_STRENGTH_REQUIRED}). Gained ${foodBonus} food, ${woodBonus} wood, and military XP.`;
       log.push({ year: run.year, message: raidMsg, type: "success" });
       const firstTime = !state.seenEventTypes.includes("raider_survived");
       const shouldPause = !state.autoDismissEventTypes.includes("raider_survived");
@@ -345,8 +345,8 @@ function applyActionPerTick(
         resources.food += 2 * outputMult;
       }
       break;
-    case "gather_materials":
-      resources.materials += 1 * outputMult;
+    case "gather_wood":
+      resources.wood += 1 * outputMult;
       break;
     case "train_militia":
       resources.militaryStrength += 0.2 * outputMult;
@@ -528,15 +528,15 @@ export function simulateQueuePreview(
     const duration = getEffectiveDuration(def.baseDuration, skillLevel);
     const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
 
-    // Material cost check at start of action
-    if (actionProgress === 0 && def.materialCost) {
-      if (def.materialCost > resources.materials) {
+    // Wood cost check at start of action
+    if (actionProgress === 0 && def.woodCost) {
+      if (def.woodCost > resources.wood) {
         // Skip this action
         actionProgress = 0;
         queueLogicalIndex++;
         continue;
       }
-      resources.materials -= def.materialCost;
+      resources.wood -= def.woodCost;
     }
 
     // Per-tick effects
