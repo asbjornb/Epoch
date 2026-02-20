@@ -53,6 +53,18 @@ function loadTotalRuns(): number {
   return 0;
 }
 
+function loadTotalWinterYears(): number {
+  try {
+    const saved = localStorage.getItem("epoch_total_winter_years");
+    if (saved) return parseInt(saved, 10);
+  } catch { /* ignore */ }
+  return 0;
+}
+
+const WINTER_START = 4000;
+const WINTER_END = 4500;
+const WINTER_HUNT_UNLOCK_THRESHOLD = 1500;
+
 const DEFAULT_UNLOCKED_ACTIONS: ActionId[] = ["farm"];
 
 function loadUnlockedActions(): ActionId[] {
@@ -182,6 +194,7 @@ function createInitialState(): GameState {
     skills,
     run: createInitialRun(),
     totalRuns: loadTotalRuns(),
+    totalWinterYearsSurvived: loadTotalWinterYears(),
     unlockedActions: computeSkillUnlocks(unlocked, skills),
     encounteredDisasters: loadEncounteredDisasters(),
     seenEventTypes: loadSeenEventTypes(),
@@ -372,8 +385,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const runHistory = [historyEntry, ...state.runHistory].slice(0, 10);
       localStorage.setItem("epoch_run_history", JSON.stringify(runHistory));
 
+      // Tally winter years survived this run
+      const winterYearsThisRun = Math.max(0, Math.min(state.run.year, WINTER_END) - WINTER_START);
+      const totalWinterYearsSurvived = (state.totalWinterYearsSurvived || 0) + winterYearsThisRun;
+      localStorage.setItem("epoch_total_winter_years", String(totalWinterYearsSurvived));
+
       // Check skill-based unlocks
-      const unlockedActions = computeSkillUnlocks(state.unlockedActions, state.skills);
+      let unlockedActions = computeSkillUnlocks(state.unlockedActions, state.skills);
+
+      // Unlock winter_hunt when enough winter years survived
+      if (totalWinterYearsSurvived >= WINTER_HUNT_UNLOCK_THRESHOLD && !unlockedActions.includes("winter_hunt")) {
+        unlockedActions = [...unlockedActions, "winter_hunt"];
+      }
       localStorage.setItem("epoch_unlocked_actions", JSON.stringify(unlockedActions));
 
       // Preserve queue and settings from previous run
@@ -385,6 +408,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         run: newRun,
         totalRuns,
+        totalWinterYearsSurvived,
         unlockedActions,
         lastRunYear,
         runHistory,
@@ -519,6 +543,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       localStorage.removeItem(SAVE_KEY);
       localStorage.removeItem("epoch_skills");
       localStorage.removeItem("epoch_total_runs");
+      localStorage.removeItem("epoch_total_winter_years");
       localStorage.removeItem("epoch_unlocked_actions");
       localStorage.removeItem("epoch_encountered_disasters");
       localStorage.removeItem("epoch_seen_event_types");
@@ -530,6 +555,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         skills,
         run: createInitialRun(),
         totalRuns: 0,
+        totalWinterYearsSurvived: 0,
         unlockedActions: [...DEFAULT_UNLOCKED_ACTIONS],
         encounteredDisasters: [],
         seenEventTypes: [],

@@ -77,13 +77,22 @@ export const ACTION_DEFS: ActionDef[] = [
     unlockLevel: 3,
   },
   {
-    id: "preserve_food",
-    name: "Preserve Food",
-    description: "Apply preservation techniques. Produces food even in winter.",
+    id: "cure_food",
+    name: "Cure Food",
+    description: "Prepare and cure food for long-term storage. Converts up to 100 food into preserved food that spoils much slower.",
     skill: "research",
     category: "resource",
     baseDuration: 140,
     unlockLevel: 5,
+  },
+  {
+    id: "winter_hunt",
+    name: "Winter Hunt",
+    description: "Hunt and forage for scarce winter life. Produces a small amount of food year-round.",
+    skill: "military",
+    category: "resource",
+    baseDuration: 100,
+    unlockLevel: 0,
   },
 ];
 

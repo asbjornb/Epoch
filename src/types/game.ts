@@ -10,6 +10,7 @@ export type Skills = Record<SkillName, SkillState>;
 
 export interface Resources {
   food: number;
+  preservedFood: number;
   population: number;
   maxPopulation: number;
   materials: number;
@@ -28,7 +29,8 @@ export type ActionId =
   | "research_tools"
   | "gather_materials"
   | "scout"
-  | "preserve_food";
+  | "cure_food"
+  | "winter_hunt";
 
 export interface ActionDef {
   id: ActionId;
@@ -110,6 +112,7 @@ export interface GameState {
   skills: Skills;
   run: RunState;
   totalRuns: number;
+  totalWinterYearsSurvived: number;
   unlockedActions: ActionId[];
   encounteredDisasters: string[];
   seenEventTypes: string[];

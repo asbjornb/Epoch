@@ -45,6 +45,14 @@ export function ResourceBar({ resources, year, maxYear, encounteredDisasters }: 
           color="#6a8f5c"
           extra={`/ ${Math.floor(resources.foodStorage)}`}
         />
+        {resources.preservedFood > 0 && (
+          <ResourceItem
+            label="Preserved"
+            value={Math.floor(resources.preservedFood)}
+            icon="🫙"
+            color="#8a7a5c"
+          />
+        )}
         <ResourceItem
           label="Pop"
           value={resources.population}
