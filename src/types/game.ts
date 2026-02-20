@@ -1,4 +1,5 @@
 export type SkillName = "farming" | "building" | "research" | "military";
+export type ActionCategory = "resource" | "building" | "research" | "military";
 
 export interface SkillState {
   level: number;
@@ -34,6 +35,7 @@ export interface ActionDef {
   name: string;
   description: string;
   skill: SkillName;
+  category: ActionCategory;
   baseDuration: number;
   unlockLevel: number;
   materialCost?: number;

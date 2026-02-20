@@ -344,7 +344,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           const def = getActionDef(activeEntry.actionId);
           if (def) {
             const skillLevel = state.skills[def.skill].level;
-            const duration = getEffectiveDuration(def.baseDuration, skillLevel);
+            const duration = getEffectiveDuration(def.baseDuration, skillLevel, state.run.resources.population, def.category);
             lastActionId = activeEntry.actionId;
             lastActionYearsRemaining = duration - state.run.currentActionProgress;
             lastActionYearsDone = state.run.currentActionProgress;
