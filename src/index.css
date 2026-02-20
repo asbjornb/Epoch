@@ -381,6 +381,9 @@ h1, h2, h3 {
   letter-spacing: 0.04em;
   color: var(--text-dim);
   margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .palette-grid {
@@ -441,6 +444,89 @@ h1, h2, h3 {
   font-size: 0.65rem;
   color: var(--building);
   font-variant-numeric: tabular-nums;
+}
+
+/* ===== Hint Button ===== */
+.hint-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.hint-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.hint-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.hint-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 220px;
+  max-width: 280px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  animation: hint-fade-in 0.15s ease-out;
+}
+
+.hint-popover::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 12px;
+  transform: rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: var(--bg-raised);
+  border-left: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-light);
+}
+
+.hint-popover-label {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.hint-popover-text {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+@keyframes hint-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Queue List */
