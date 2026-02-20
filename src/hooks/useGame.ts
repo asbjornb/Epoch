@@ -150,7 +150,19 @@ function saveGameState(state: GameState): void {
 export function loadGameState(): GameState | null {
   try {
     const saved = localStorage.getItem(SAVE_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Validate that the save has the current schema — discard incompatible saves
+      if (
+        !parsed?.run?.resources ||
+        !Array.isArray(parsed.run.resources.researchedTechs) ||
+        typeof parsed.run.resources.wood !== "number"
+      ) {
+        localStorage.removeItem(SAVE_KEY);
+        return null;
+      }
+      return parsed;
+    }
   } catch { /* ignore */ }
   return null;
 }
