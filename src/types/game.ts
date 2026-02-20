@@ -59,6 +59,7 @@ export interface RunState {
   repeatLastAction: boolean;
   pendingEvents: EventPopup[];
   pausedByEvent: boolean;
+  totalFoodSpoiled: number;
 }
 
 export interface LogEntry {
@@ -83,13 +84,19 @@ export interface DisasterInfo {
   color: string;
 }
 
+export interface RunHistoryQueueEntry {
+  actionId: ActionId;
+  repeat: number;
+}
+
 export interface RunHistoryEntry {
   runNumber: number;
   year: number;
   outcome: "collapsed" | "victory" | "abandoned";
   collapseReason?: string;
-  queue: ActionId[];
+  queue: RunHistoryQueueEntry[];
   resources: Resources;
+  totalFoodSpoiled?: number;
 }
 
 export interface GameState {

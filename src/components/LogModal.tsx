@@ -41,6 +41,10 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
         : "Abandoned";
 
   const r = entry.resources;
+  const hasWaste =
+    Math.floor(r.food) > 0 ||
+    Math.floor(r.materials) > 0 ||
+    (entry.totalFoodSpoiled ?? 0) > 0;
 
   return (
     <div className={`run-history-card run-history-${entry.outcome}`}>
@@ -65,14 +69,28 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
           <div className="run-history-section">
             <div className="run-history-section-label">Resources</div>
             <div className="run-history-stats">
-              <Stat label="Food" value={Math.floor(r.food)} />
               <Stat label="Pop" value={`${r.population}/${r.maxPopulation}`} />
-              <Stat label="Materials" value={Math.floor(r.materials)} />
               <Stat label="Defense" value={`${Math.floor(r.militaryStrength)}+${Math.floor(r.wallDefense)}w`} />
               <Stat label="Tech" value={r.techLevel} />
-              <Stat label="Storage" value={Math.floor(r.foodStorage)} />
             </div>
           </div>
+
+          {hasWaste && (
+            <div className="run-history-section">
+              <div className="run-history-section-label">Waste</div>
+              <div className="run-history-stats">
+                {Math.floor(r.food) > 0 && (
+                  <Stat label="Food left" value={Math.floor(r.food)} warn />
+                )}
+                {Math.floor(r.materials) > 0 && (
+                  <Stat label="Materials left" value={Math.floor(r.materials)} warn />
+                )}
+                {(entry.totalFoodSpoiled ?? 0) > 0 && (
+                  <Stat label="Food spoiled" value={Math.floor(entry.totalFoodSpoiled!)} warn />
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="run-history-section">
             <div className="run-history-section-label">Queue</div>
@@ -80,12 +98,20 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
               <div className="run-history-queue-empty">No actions queued</div>
             ) : (
               <div className="run-history-queue">
-                {entry.queue.map((actionId, j) => {
-                  const def = getActionDef(actionId);
+                {entry.queue.map((qe, j) => {
+                  const def = getActionDef(qe.actionId);
+                  const repeatLabel =
+                    qe.repeat === -1 ? "\u221E" : qe.repeat > 1 ? `\u00D7${qe.repeat}` : "";
                   return (
-                    <span key={j} className="run-history-action-chip">
-                      {def?.name ?? actionId}
-                    </span>
+                    <div key={j} className="run-history-action-row">
+                      <span className="run-history-action-index">{j + 1}.</span>
+                      <span className="run-history-action-name">
+                        {def?.name ?? qe.actionId}
+                      </span>
+                      {repeatLabel && (
+                        <span className="run-history-action-repeat">{repeatLabel}</span>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -97,9 +123,9 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+function Stat({ label, value, warn }: { label: string; value: string | number; warn?: boolean }) {
   return (
-    <div className="run-history-stat">
+    <div className={`run-history-stat${warn ? " run-history-stat-warn" : ""}`}>
       <span className="run-history-stat-label">{label}</span>
       <span className="run-history-stat-value">{value}</span>
     </div>

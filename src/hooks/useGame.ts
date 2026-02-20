@@ -269,8 +269,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         year: state.run.year,
         outcome,
         collapseReason: state.run.collapseReason,
-        queue: state.run.queue.map((e) => e.actionId),
+        queue: state.run.queue.map((e) => ({ actionId: e.actionId, repeat: e.repeat })),
         resources: { ...state.run.resources },
+        totalFoodSpoiled: state.run.totalFoodSpoiled || 0,
       };
       const runHistory = [historyEntry, ...state.runHistory].slice(0, 10);
       localStorage.setItem("epoch_run_history", JSON.stringify(runHistory));
