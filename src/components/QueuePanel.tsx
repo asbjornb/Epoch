@@ -83,6 +83,7 @@ function QueueItem({
   progress,
   duration,
   currentRepeat,
+  isRepeatingLast,
   isFirst,
   isLast,
   dispatch,
@@ -93,6 +94,7 @@ function QueueItem({
   progress: number;
   duration: number;
   currentRepeat: number;
+  isRepeatingLast: boolean;
   isFirst: boolean;
   isLast: boolean;
   dispatch: React.Dispatch<GameAction>;
@@ -101,10 +103,12 @@ function QueueItem({
   if (!def) return null;
 
   const pct = isActive ? Math.min(100, (progress / duration) * 100) : 0;
-  const showRepeatProgress = isActive && entry.repeat > 1;
+  const showRepeatProgress = isActive && entry.repeat > 1 && !isRepeatingLast;
   const repeatPct = showRepeatProgress
     ? Math.min(100, ((currentRepeat - 1 + pct / 100) / entry.repeat) * 100)
     : 0;
+  const showRepeatLastCount = isActive && isRepeatingLast;
+  const totalRepeatCount = isRepeatingLast ? entry.repeat + currentRepeat : 0;
   return (
     <div className={`queue-item ${isActive ? "active" : ""}`}>
       {isActive && (
@@ -210,6 +214,13 @@ function QueueItem({
           </div>
           <span className="queue-repeat-progress-label">
             {currentRepeat} of {entry.repeat}
+          </span>
+        </div>
+      )}
+      {showRepeatLastCount && (
+        <div className="queue-repeat-progress">
+          <span className="queue-repeat-progress-label">
+            ×{totalRepeatCount}
           </span>
         </div>
       )}
@@ -399,10 +410,12 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
                 }
                 logicalPos += reps;
               }
+              let isRepeatingLast = false;
               if (activeArrayIdx === -1 && run.repeatLastAction) {
                 activeArrayIdx = queue.length - 1;
                 // For repeat-last-action, compute how far past the queue we are
                 activeLogicalStart = logicalPos;
+                isRepeatingLast = true;
               }
 
               // Current repeat iteration (1-indexed)
@@ -421,6 +434,7 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
                     progress={isActive ? run.currentActionProgress : 0}
                     duration={duration}
                     currentRepeat={isActive ? currentRepeat : 0}
+                    isRepeatingLast={isRepeatingLast && i === activeArrayIdx}
                     isFirst={i === 0}
                     isLast={i === queue.length - 1}
                     dispatch={dispatch}
