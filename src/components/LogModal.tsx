@@ -5,6 +5,7 @@ import { getActionDef } from "../types/actions.ts";
 interface LogModalProps {
   log: LogEntry[];
   runHistory: RunHistoryEntry[];
+  totalRuns: number;
   onClose: () => void;
 }
 
@@ -105,8 +106,153 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export function LogModal({ log, runHistory, onClose }: LogModalProps) {
-  const [tab, setTab] = useState<"log" | "history">("log");
+function StatisticsPanel({
+  runHistory,
+  totalRuns,
+}: {
+  runHistory: RunHistoryEntry[];
+  totalRuns: number;
+}) {
+  const victories = runHistory.filter((r) => r.outcome === "victory").length;
+  const collapses = runHistory.filter((r) => r.outcome === "collapsed").length;
+  const abandoned = runHistory.filter((r) => r.outcome === "abandoned").length;
+
+  const bestYear =
+    runHistory.length > 0
+      ? Math.max(...runHistory.map((r) => r.year))
+      : 0;
+
+  const avgYear =
+    runHistory.length > 0
+      ? Math.round(
+          runHistory.reduce((sum, r) => sum + r.year, 0) / runHistory.length,
+        )
+      : 0;
+
+  const collapseReasons = runHistory
+    .filter((r) => r.outcome === "collapsed" && r.collapseReason)
+    .reduce<Record<string, number>>((acc, r) => {
+      const reason = r.collapseReason!;
+      acc[reason] = (acc[reason] || 0) + 1;
+      return acc;
+    }, {});
+
+  const sortedReasons = Object.entries(collapseReasons).sort(
+    (a, b) => b[1] - a[1],
+  );
+
+  return (
+    <div className="stats-panel">
+      <div className="stats-section">
+        <div className="stats-section-label">Overview</div>
+        <div className="stats-grid">
+          <div className="stats-card">
+            <span className="stats-card-value">{totalRuns + 1}</span>
+            <span className="stats-card-label">Current Run</span>
+          </div>
+          <div className="stats-card">
+            <span className="stats-card-value">{totalRuns}</span>
+            <span className="stats-card-label">Completed</span>
+          </div>
+          <div className="stats-card">
+            <span className="stats-card-value stats-victory">{victories}</span>
+            <span className="stats-card-label">Victories</span>
+          </div>
+          <div className="stats-card">
+            <span className="stats-card-value stats-collapse">{collapses}</span>
+            <span className="stats-card-label">Collapses</span>
+          </div>
+        </div>
+      </div>
+
+      {runHistory.length > 0 && (
+        <div className="stats-section">
+          <div className="stats-section-label">Years</div>
+          <div className="stats-grid">
+            <div className="stats-card">
+              <span className="stats-card-value">{bestYear.toLocaleString()}</span>
+              <span className="stats-card-label">Best Year</span>
+            </div>
+            <div className="stats-card">
+              <span className="stats-card-value">{avgYear.toLocaleString()}</span>
+              <span className="stats-card-label">Avg Year</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {runHistory.length > 0 && (
+        <div className="stats-section">
+          <div className="stats-section-label">Outcomes</div>
+          <div className="stats-outcome-bar">
+            {victories > 0 && (
+              <div
+                className="stats-outcome-segment stats-outcome-victory"
+                style={{ flex: victories }}
+                title={`${victories} victories`}
+              />
+            )}
+            {collapses > 0 && (
+              <div
+                className="stats-outcome-segment stats-outcome-collapse"
+                style={{ flex: collapses }}
+                title={`${collapses} collapses`}
+              />
+            )}
+            {abandoned > 0 && (
+              <div
+                className="stats-outcome-segment stats-outcome-abandoned"
+                style={{ flex: abandoned }}
+                title={`${abandoned} abandoned`}
+              />
+            )}
+          </div>
+          <div className="stats-outcome-legend">
+            {victories > 0 && (
+              <span className="stats-legend-item">
+                <span className="stats-legend-dot stats-outcome-victory" />
+                {victories} victory{victories !== 1 ? "s" : ""}
+              </span>
+            )}
+            {collapses > 0 && (
+              <span className="stats-legend-item">
+                <span className="stats-legend-dot stats-outcome-collapse" />
+                {collapses} collapse{collapses !== 1 ? "s" : ""}
+              </span>
+            )}
+            {abandoned > 0 && (
+              <span className="stats-legend-item">
+                <span className="stats-legend-dot stats-outcome-abandoned" />
+                {abandoned} abandoned
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {sortedReasons.length > 0 && (
+        <div className="stats-section">
+          <div className="stats-section-label">Collapse Reasons</div>
+          <div className="stats-reasons">
+            {sortedReasons.map(([reason, count]) => (
+              <div key={reason} className="stats-reason-row">
+                <span className="stats-reason-text">{reason}</span>
+                <span className="stats-reason-count">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {runHistory.length === 0 && (
+        <div className="log-empty">No completed runs yet. Statistics will appear after your first run.</div>
+      )}
+    </div>
+  );
+}
+
+export function LogModal({ log, runHistory, totalRuns, onClose }: LogModalProps) {
+  const [tab, setTab] = useState<"log" | "history" | "stats">("log");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -132,6 +278,12 @@ export function LogModal({ log, runHistory, onClose }: LogModalProps) {
             >
               Run History
             </button>
+            <button
+              className={`log-modal-tab${tab === "stats" ? " active" : ""}`}
+              onClick={() => setTab("stats")}
+            >
+              Statistics
+            </button>
           </div>
           <button className="log-modal-close" onClick={onClose}>
             ✕
@@ -154,6 +306,9 @@ export function LogModal({ log, runHistory, onClose }: LogModalProps) {
           )}
           {tab === "history" && (
             <RunHistoryPanel runHistory={runHistory} />
+          )}
+          {tab === "stats" && (
+            <StatisticsPanel runHistory={runHistory} totalRuns={totalRuns} />
           )}
         </div>
       </div>

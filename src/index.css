@@ -1727,6 +1727,137 @@ h1, h2, h3 {
   color: var(--text);
 }
 
+/* ===== Statistics Panel ===== */
+.stats-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stats-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stats-section-label {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.stats-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 8px;
+}
+
+.stats-card-value {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-card-value.stats-victory {
+  color: var(--success);
+}
+
+.stats-card-value.stats-collapse {
+  color: var(--danger);
+}
+
+.stats-card-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.stats-outcome-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.stats-outcome-segment {
+  min-width: 6px;
+  border-radius: 3px;
+}
+
+.stats-outcome-victory {
+  background: var(--success);
+}
+
+.stats-outcome-collapse {
+  background: var(--danger);
+}
+
+.stats-outcome-abandoned {
+  background: var(--text-dim);
+}
+
+.stats-outcome-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stats-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text);
+}
+
+.stats-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stats-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.stats-reason-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.stats-reason-text {
+  color: var(--text);
+}
+
+.stats-reason-count {
+  font-weight: 600;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ===== Settings Modal ===== */
 .settings-modal-overlay {
   position: fixed;
