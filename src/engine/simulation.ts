@@ -231,7 +231,11 @@ export function tick(state: GameState): GameState {
     const totalDefense = resources.militaryStrength + resources.wallDefense;
     if (totalDefense < RAIDER_STRENGTH_REQUIRED) {
       run.status = "collapsed";
-      run.collapseReason = `Raiders attacked at year ${RAIDER_YEAR}. Total defense ${Math.floor(totalDefense)} (military ${Math.floor(resources.militaryStrength)} + walls ${Math.floor(resources.wallDefense)}) < ${RAIDER_STRENGTH_REQUIRED} required.`;
+      const defenseDetail = `Total defense ${Math.floor(totalDefense)} (military ${Math.floor(resources.militaryStrength)} + walls ${Math.floor(resources.wallDefense)})`;
+      const hasSeenDefense = state.seenEventTypes.includes("raider_survived");
+      run.collapseReason = hasSeenDefense
+        ? `Raiders attacked at year ${RAIDER_YEAR}. ${defenseDetail} < ${RAIDER_STRENGTH_REQUIRED} required.`
+        : `Raiders attacked at year ${RAIDER_YEAR}. ${defenseDetail} was not enough.`;
       log.push({
         year: run.year,
         message: run.collapseReason,
