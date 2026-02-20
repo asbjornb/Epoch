@@ -170,7 +170,8 @@ export function loadGameState(): GameState | null {
       if (
         !parsed?.run?.resources ||
         !Array.isArray(parsed.run.resources.researchedTechs) ||
-        typeof parsed.run.resources.wood !== "number"
+        typeof parsed.run.resources.wood !== "number" ||
+        typeof parsed.run.resources.militaryStrength !== "number"
       ) {
         incompatibleSaveJson = saved;
         localStorage.removeItem(SAVE_KEY);
