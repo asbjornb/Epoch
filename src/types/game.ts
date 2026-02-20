@@ -17,6 +17,7 @@ export interface Resources {
   militaryStrength: number;
   wallDefense: number;
   foodStorage: number;
+  granariesBuilt: number;
   researchedTechs: ActionId[];
 }
 

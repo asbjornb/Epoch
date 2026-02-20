@@ -32,7 +32,7 @@ export const ACTION_DEFS: ActionDef[] = [
   {
     id: "build_granary",
     name: "Build Granary",
-    description: "Stores extra food. Critical for winter prep. Costs 50 wood.",
+    description: "Stores extra food. Critical for winter prep. Diminishing returns. Costs 50 wood.",
     skill: "building",
     category: "building",
     baseDuration: 200,
