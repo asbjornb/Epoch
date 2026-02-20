@@ -28,7 +28,9 @@ export type GameAction =
   | { type: "queue_load"; queue: QueueEntry[]; repeatLastAction: boolean }
   | { type: "force_collapse" }
   | { type: "import_save"; state: GameState }
-  | { type: "hard_reset" };
+  | { type: "hard_reset" }
+  | { type: "reset_auto_dismiss"; eventId: string }
+  | { type: "reset_all_auto_dismiss" };
 
 let uidCounter = 0;
 export function makeUid(): string {
@@ -536,6 +538,20 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         skillsAtRunStart: cloneSkills(skills),
         runHistory: [],
       };
+    }
+
+    case "reset_auto_dismiss": {
+      const autoDismissEventTypes = state.autoDismissEventTypes.filter(
+        (id) => id !== action.eventId,
+      );
+      localStorage.setItem("epoch_auto_dismiss_event_types", JSON.stringify(autoDismissEventTypes));
+      return { ...state, autoDismissEventTypes };
+    }
+
+    case "reset_all_auto_dismiss": {
+      const autoDismissEventTypes: string[] = [];
+      localStorage.setItem("epoch_auto_dismiss_event_types", JSON.stringify(autoDismissEventTypes));
+      return { ...state, autoDismissEventTypes };
     }
 
     default:

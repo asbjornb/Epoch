@@ -1472,7 +1472,7 @@ h1, h2, h3 {
   width: calc(100% - 32px);
   cursor: pointer;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
-  animation: slideDown 0.25s ease, fadeOut 0.4s ease 4.6s forwards;
+  animation: slideDown 0.25s ease, fadeOut 0.4s ease 6.6s forwards;
 }
 
 .event-toast.event-modal-warning {
@@ -2244,6 +2244,45 @@ h1, h2, h3 {
 .settings-import-textarea:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.settings-auto-dismiss-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-auto-dismiss-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.settings-auto-dismiss-name {
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.settings-auto-dismiss-undo {
+  font-family: inherit;
+  font-size: 0.7rem;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.settings-auto-dismiss-undo:hover {
+  background: rgba(106, 143, 92, 0.12);
 }
 
 .settings-danger-zone {

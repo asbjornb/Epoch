@@ -12,9 +12,9 @@ export function EventModal({ event, autoDismiss, onDismiss, onDismissNoPause }: 
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Auto-dismiss after 5 seconds for events the player opted to not pause for
+    // Auto-dismiss after 7 seconds for events the player opted to not pause for
     if (autoDismiss) {
-      timerRef.current = window.setTimeout(onDismiss, 5000);
+      timerRef.current = window.setTimeout(onDismiss, 7000);
     }
     return () => {
       if (timerRef.current !== null) {
