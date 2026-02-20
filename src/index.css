@@ -639,30 +639,6 @@ h1, h2, h3 {
   font-size: 0.8rem;
 }
 
-.queue-repeat-inf {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-  padding: 0;
-}
-
-.queue-repeat-inf:hover {
-  background: var(--bg-hover);
-  color: var(--text-bright);
-}
-
-.queue-repeat-inf.active {
-  background: rgba(196, 154, 60, 0.2);
-  color: var(--accent);
-}
 
 .queue-item-timer {
   font-size: 0.7rem;
@@ -703,11 +679,34 @@ h1, h2, h3 {
   color: var(--danger);
 }
 
-.queue-repeat-indicator {
-  text-align: center;
+.queue-repeat-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 5px 0;
   font-size: 0.7rem;
   color: var(--text-dim);
-  padding: 6px 0 2px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.queue-repeat-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.queue-repeat-toggle.active {
+  color: var(--accent);
+  border-color: rgba(196, 154, 60, 0.25);
+}
+
+.queue-repeat-toggle-icon {
+  font-size: 0.8rem;
 }
 
 /* Queue bottom actions */

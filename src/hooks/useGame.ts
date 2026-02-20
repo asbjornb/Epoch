@@ -16,6 +16,7 @@ export type GameAction =
   | { type: "resume_run" }
   | { type: "reset_run" }
   | { type: "toggle_auto_restart" }
+  | { type: "toggle_repeat_last_action" }
   | { type: "dismiss_event" }
   | { type: "dismiss_event_no_pause" }
   | { type: "queue_add"; actionId: ActionId; repeat?: number }
@@ -278,10 +279,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const unlockedActions = computeSkillUnlocks(state.unlockedActions, state.skills);
       localStorage.setItem("epoch_unlocked_actions", JSON.stringify(unlockedActions));
 
-      // Preserve queue and autoRestart setting from previous run
+      // Preserve queue and settings from previous run
       const newRun = createInitialRun();
       newRun.queue = state.run.queue.map((e) => ({ ...e }));
       newRun.autoRestart = state.run.autoRestart;
+      newRun.repeatLastAction = state.run.repeatLastAction;
       return {
         ...state,
         run: newRun,
@@ -337,6 +339,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "toggle_auto_restart": {
       const run = { ...state.run, autoRestart: !state.run.autoRestart };
+      return { ...state, run };
+    }
+
+    case "toggle_repeat_last_action": {
+      const run = { ...state.run, repeatLastAction: !state.run.repeatLastAction };
       return { ...state, run };
     }
 

@@ -56,6 +56,7 @@ export interface RunState {
   log: LogEntry[];
   collapseReason?: string;
   autoRestart: boolean;
+  repeatLastAction: boolean;
   pendingEvents: EventPopup[];
   pausedByEvent: boolean;
 }
