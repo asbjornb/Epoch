@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useGame } from "./hooks/useGame.ts";
 import { useWakeLock } from "./hooks/useWakeLock.ts";
-import { QueuePanel } from "./components/QueuePanel.tsx";
+import { QueuePanel, ActionPalette } from "./components/QueuePanel.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { SkillsPanel } from "./components/SkillsPanel.tsx";
 import { EventModal } from "./components/EventModal.tsx";
@@ -13,6 +13,7 @@ function App() {
   const { state, dispatch } = useGame();
   const wakeLock = useWakeLock();
   const [skillsOpen, setSkillsOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [summaryDismissedAtRun, setSummaryDismissedAtRun] = useState(-1);
@@ -68,6 +69,9 @@ function App() {
       />
 
       <main className="app-main">
+        <div className="main-actions">
+          <ActionPalette state={state} dispatch={dispatch} />
+        </div>
         <div className="main-queue">
           <QueuePanel state={state} dispatch={dispatch} />
         </div>
@@ -75,6 +79,31 @@ function App() {
           <SkillsPanel skills={state.skills} />
         </div>
       </main>
+
+      {/* Mobile actions drawer toggle */}
+      <button
+        className="actions-drawer-toggle"
+        onClick={() => setActionsOpen(true)}
+        aria-label="Open actions"
+      >
+        <span className="actions-drawer-toggle-icon">+</span>
+        <span className="actions-drawer-toggle-text">Actions</span>
+      </button>
+
+      {/* Mobile actions drawer */}
+      {actionsOpen && (
+        <div className="actions-drawer-overlay" onClick={() => setActionsOpen(false)}>
+          <div className="actions-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="actions-drawer-header">
+              <h3>Actions</h3>
+              <button className="actions-drawer-close" onClick={() => setActionsOpen(false)}>
+                ✕
+              </button>
+            </div>
+            <ActionPalette state={state} dispatch={dispatch} />
+          </div>
+        </div>
+      )}
 
       {/* Event popup modal */}
       {pendingEvent && (
