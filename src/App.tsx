@@ -142,7 +142,7 @@ function App() {
       {pendingEvent && (
         <EventModal
           event={pendingEvent}
-          autoDismiss={state.autoDismissEventTypes.includes(pendingEvent.eventId)}
+          autoDismiss={pendingEvent.eventId.startsWith("tutorial_") || state.autoDismissEventTypes.includes(pendingEvent.eventId)}
           onDismiss={handleDismissEvent}
           onDismissNoPause={handleDismissEventNoPause}
         />

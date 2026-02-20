@@ -300,6 +300,40 @@ export function tick(state: GameState): GameState {
     }
   }
 
+  // Tutorial tips for first run (non-blocking toasts)
+  if (state.totalRuns === 0) {
+    if (run.year === 100) {
+      pendingEvents.push({
+        eventId: "tutorial_intro",
+        title: "A New Beginning",
+        message: "Your civilization starts small — just a few people and a patch of farmland. For now, farming is all you know. Don't worry. As your food stores fill, new skills will emerge. And when this generation eventually falls, some knowledge carries forward.",
+        type: "success",
+        year: run.year,
+        firstTime: true,
+      });
+    }
+    if (run.year === 500) {
+      pendingEvents.push({
+        eventId: "tutorial_skills",
+        title: "Skills",
+        message: "Check the Skills panel to see how your people are progressing. Skills persist between generations.",
+        type: "success",
+        year: run.year,
+        firstTime: true,
+      });
+    }
+    if (run.year === 1000) {
+      pendingEvents.push({
+        eventId: "tutorial_hints",
+        title: "Hints",
+        message: "Not sure what to do next? Press the ? button near Actions for a hint on what to explore.",
+        type: "success",
+        year: run.year,
+        firstTime: true,
+      });
+    }
+  }
+
   // Raider event - walls and fortification multiply total defense
   if (run.year === RAIDER_YEAR) {
     const totalDefense = getTotalDefense(resources);
