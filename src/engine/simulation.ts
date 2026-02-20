@@ -372,3 +372,160 @@ function applyActionCompletion(
       break;
   }
 }
+
+function applyCompletionPreview(
+  actionId: string,
+  resources: Resources,
+  outputMult: number,
+): void {
+  switch (actionId) {
+    case "build_hut":
+      resources.maxPopulation += 3;
+      break;
+    case "build_granary":
+      resources.foodStorage += Math.floor(150 * outputMult);
+      break;
+    case "build_wall":
+      resources.wallDefense += Math.floor(8 * outputMult);
+      break;
+    case "research_tools":
+      resources.techLevel += 1;
+      break;
+    case "preserve_food":
+      resources.foodStorage += Math.floor(30 * outputMult);
+      break;
+  }
+}
+
+export interface QueuePreview {
+  resources: Resources;
+  yearsUsed: number;
+  /** true if population hit 0 during simulation */
+  collapsed: boolean;
+}
+
+/**
+ * Simulate the queue from a fresh run to project resource outcomes.
+ * Includes food consumption, pop growth, spoilage, winter effects.
+ * Does NOT include event pauses or collapse-ending logic — just resources.
+ * Caps infinite-repeat entries at enough ticks to fill the remaining epoch.
+ */
+export function simulateQueuePreview(
+  queue: QueueEntry[],
+  skills: GameState["skills"],
+): QueuePreview {
+  if (queue.length === 0) {
+    return { resources: createInitialResources(), yearsUsed: 0, collapsed: false };
+  }
+
+  const resources = createInitialResources();
+  const simSkills = {
+    farming: { ...skills.farming },
+    building: { ...skills.building },
+    research: { ...skills.research },
+    military: { ...skills.military },
+  };
+  let year = 0;
+  const MAX_YEAR = 10000;
+  let queueLogicalIndex = 0;
+  let actionProgress = 0;
+  let collapsed = false;
+
+  // Expand queue into a flat action list (cap infinite at remaining years worth)
+  // Instead, simulate tick-by-tick with the same queue index logic
+
+  while (year < MAX_YEAR) {
+    // Find current queue entry
+    let arrayIdx = -1;
+    let logicalPos = 0;
+    for (let i = 0; i < queue.length; i++) {
+      const reps = queue[i].repeat === -1 ? Infinity : queue[i].repeat;
+      if (logicalPos + reps > queueLogicalIndex) {
+        arrayIdx = i;
+        break;
+      }
+      logicalPos += reps;
+    }
+
+    // If queue is exhausted (no infinite), the last entry repeats indefinitely
+    if (arrayIdx === -1) {
+      arrayIdx = queue.length - 1;
+    }
+
+    const entry = queue[arrayIdx];
+    const def = getActionDef(entry.actionId);
+    if (!def) break;
+
+    year++;
+    const isWinter = year >= WINTER_START && year <= WINTER_END;
+
+    // Food consumption
+    const foodPerPop = isWinter ? WINTER_FOOD_PER_POP : FOOD_PER_POP;
+    resources.food -= resources.population * foodPerPop;
+
+    // Starvation
+    if (resources.food < 0) {
+      const deaths = Math.min(
+        resources.population,
+        Math.ceil(Math.abs(resources.food) / 2),
+      );
+      resources.population = Math.max(0, resources.population - deaths);
+      resources.food = 0;
+    }
+
+    if (resources.population <= 0) {
+      collapsed = true;
+      break;
+    }
+
+    // Spoilage
+    if (resources.food > resources.foodStorage) {
+      const excess = resources.food - resources.foodStorage;
+      resources.food -= Math.ceil(excess * SPOILAGE_RATE);
+    }
+
+    // Pop growth
+    if (
+      !isWinter &&
+      resources.population < resources.maxPopulation &&
+      resources.food > resources.population * FOOD_PER_POP + POP_GROWTH_THRESHOLD
+    ) {
+      resources.population++;
+    }
+
+    // Multipliers
+    const techMult = getTechMultiplier(resources.techLevel);
+    const popMult = getPopulationMultiplier(resources.population);
+    const skillLevel = simSkills[def.skill].level;
+    const duration = getEffectiveDuration(def.baseDuration, skillLevel);
+    const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
+
+    // Material cost check at start of action
+    if (actionProgress === 0 && def.materialCost) {
+      if (def.materialCost > resources.materials) {
+        // Skip this action
+        actionProgress = 0;
+        queueLogicalIndex++;
+        continue;
+      }
+      resources.materials -= def.materialCost;
+    }
+
+    // Per-tick effects
+    applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
+
+    // XP
+    simSkills[def.skill] = addXp(simSkills[def.skill], 1);
+
+    actionProgress++;
+
+    // Action complete
+    if (actionProgress >= duration) {
+      applyCompletionPreview(entry.actionId, resources, outputMult);
+      actionProgress = 0;
+      queueLogicalIndex++;
+    }
+  }
+
+  return { resources, yearsUsed: year, collapsed };
+}

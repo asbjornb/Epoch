@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type {
   ActionId,
   GameState,
@@ -5,6 +6,7 @@ import type {
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { isActionUnlocked, getSkillDurationMultiplier } from "../engine/skills.ts";
+import { simulateQueuePreview, createInitialResources } from "../engine/simulation.ts";
 import type { GameAction } from "../hooks/useGame.ts";
 
 interface QueuePanelProps {
@@ -98,7 +100,7 @@ function QueueItem({
   if (!def) return null;
 
   const pct = isActive ? Math.min(100, (progress / duration) * 100) : 0;
-  const repeatLabel = entry.repeat === -1 ? "∞" : `×${entry.repeat}`;
+  const isInfinite = entry.repeat === -1;
 
   return (
     <div className={`queue-item ${isActive ? "active" : ""}`}>
@@ -113,7 +115,58 @@ function QueueItem({
             style={{ background: SKILL_COLORS[def.skill] }}
           />
           <span className="queue-item-name">{def.name}</span>
-          <span className="queue-item-repeat">{repeatLabel}</span>
+          <span className="queue-repeat-control">
+            <button
+              className="queue-repeat-btn"
+              onClick={() => {
+                if (isInfinite) return;
+                const next = Math.max(1, entry.repeat - 1);
+                dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: next });
+              }}
+              disabled={isInfinite}
+              title="Decrease"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              className="queue-repeat-input"
+              value={isInfinite ? "" : entry.repeat}
+              placeholder="\u221E"
+              min={1}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                if (!isNaN(val) && val >= 1) {
+                  dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: val });
+                }
+              }}
+              disabled={isInfinite}
+            />
+            <button
+              className="queue-repeat-btn"
+              onClick={() => {
+                if (isInfinite) return;
+                dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: entry.repeat + 1 });
+              }}
+              disabled={isInfinite}
+              title="Increase"
+            >
+              +
+            </button>
+            <button
+              className={`queue-repeat-inf ${isInfinite ? "active" : ""}`}
+              onClick={() =>
+                dispatch({
+                  type: "queue_set_repeat",
+                  uid: entry.uid,
+                  repeat: isInfinite ? 1 : -1,
+                })
+              }
+              title="Toggle infinite repeat"
+            >
+              ∞
+            </button>
+          </span>
           {isActive && (
             <span className="queue-item-timer">
               {progress}/{duration} years
@@ -121,19 +174,6 @@ function QueueItem({
           )}
         </div>
         <div className="queue-item-right">
-          <button
-            className="queue-btn"
-            onClick={() =>
-              dispatch({
-                type: "queue_set_repeat",
-                uid: entry.uid,
-                repeat: entry.repeat === -1 ? 1 : entry.repeat === 1 ? 3 : entry.repeat === 3 ? 5 : entry.repeat === 5 ? 10 : -1,
-              })
-            }
-            title="Cycle repeat count (1, 3, 5, 10, ∞)"
-          >
-            ↻
-          </button>
           <button
             className="queue-btn"
             onClick={() =>
@@ -168,6 +208,82 @@ function QueueItem({
             ✕
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function QueuePreviewDisplay({
+  state,
+}: {
+  state: GameState;
+}) {
+  const { run, skills } = state;
+  const queue = run.queue;
+
+  const preview = useMemo(
+    () => simulateQueuePreview(queue, skills),
+    [queue, skills],
+  );
+
+  if (queue.length === 0) return null;
+
+  const initial = createInitialResources();
+  const r = preview.resources;
+
+  const items: { label: string; value: string; delta?: number }[] = [];
+
+  // Food
+  const foodDelta = Math.floor(r.food) - initial.food;
+  items.push({ label: "Food", value: `${Math.floor(r.food)}`, delta: foodDelta });
+
+  // Population
+  if (r.maxPopulation > initial.maxPopulation || r.population > initial.population) {
+    items.push({ label: "Pop", value: `${r.population}/${r.maxPopulation}` });
+  }
+
+  // Materials
+  if (Math.floor(r.materials) !== initial.materials) {
+    items.push({ label: "Materials", value: `${Math.floor(r.materials)}`, delta: Math.floor(r.materials) - initial.materials });
+  }
+
+  // Defense
+  const totalDef = Math.floor(r.militaryStrength + r.wallDefense);
+  if (totalDef > 0) {
+    items.push({ label: "Defense", value: `${totalDef}` });
+  }
+
+  // Tech
+  if (r.techLevel > 0) {
+    items.push({ label: "Tech", value: `Lv${r.techLevel} (+${r.techLevel * 10}%)` });
+  }
+
+  // Food storage
+  if (r.foodStorage > initial.foodStorage) {
+    items.push({ label: "Storage", value: `${Math.floor(r.foodStorage)}`, delta: Math.floor(r.foodStorage) - initial.foodStorage });
+  }
+
+  return (
+    <div className="queue-preview">
+      <div className="queue-preview-header">
+        <span className="queue-preview-label">Projected outcome</span>
+        <span className="queue-preview-years">
+          {preview.yearsUsed.toLocaleString()} years
+          {preview.collapsed && <span className="queue-preview-collapse"> (collapses)</span>}
+        </span>
+      </div>
+      <div className="queue-preview-items">
+        {items.map((item) => (
+          <div key={item.label} className="queue-preview-item">
+            <span className="queue-preview-item-label">{item.label}</span>
+            <span className="queue-preview-item-value">{item.value}</span>
+            {item.delta !== undefined && item.delta !== 0 && (
+              <span className={`queue-preview-item-delta ${item.delta > 0 ? "positive" : "negative"}`}>
+                {item.delta > 0 ? "+" : ""}{item.delta}
+              </span>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -321,6 +437,8 @@ export function QueuePanel({ state, totalRuns, dispatch }: QueuePanelProps) {
           </div>
         )}
       </div>
+
+      <QueuePreviewDisplay state={state} />
 
       <div className="queue-actions-bar">
         <button
