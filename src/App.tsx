@@ -8,6 +8,7 @@ import { EventModal } from "./components/EventModal.tsx";
 import { RunSummaryModal } from "./components/RunSummaryModal.tsx";
 import { LogModal } from "./components/LogModal.tsx";
 import { SettingsPanel } from "./components/SettingsPanel.tsx";
+import { getActionDef } from "./types/actions.ts";
 import type { ActionId, QueueEntry } from "./types/game.ts";
 
 function App() {
@@ -26,7 +27,16 @@ function App() {
 
   const handleActionClick = useCallback((actionId: ActionId) => {
     if (draftMode) {
-      setDraftQueue((prev) => [...prev, { uid: makeUid(), actionId, repeat: 1 }]);
+      const def = getActionDef(actionId);
+      // Research techs are single-use: don't add if already in draft queue
+      if (def?.category === "research") {
+        setDraftQueue((prev) => {
+          if (prev.some((e) => e.actionId === actionId)) return prev;
+          return [...prev, { uid: makeUid(), actionId, repeat: 1 }];
+        });
+      } else {
+        setDraftQueue((prev) => [...prev, { uid: makeUid(), actionId, repeat: 1 }]);
+      }
     } else {
       dispatch({ type: "queue_add", actionId });
     }
@@ -84,7 +94,7 @@ function App() {
 
       <main className="app-main">
         <div className="main-actions">
-          <ActionPalette state={state} onActionClick={handleActionClick} />
+          <ActionPalette state={state} onActionClick={handleActionClick} currentQueue={draftMode ? draftQueue : state.run.queue} />
         </div>
         <div className="main-queue">
           <QueuePanel
@@ -123,7 +133,7 @@ function App() {
                 ✕
               </button>
             </div>
-            <ActionPalette state={state} onActionClick={handleActionClick} />
+            <ActionPalette state={state} onActionClick={handleActionClick} currentQueue={draftMode ? draftQueue : state.run.queue} />
           </div>
         </div>
       )}

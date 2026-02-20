@@ -445,10 +445,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "queue_add": {
+      const def = getActionDef(action.actionId);
+      // Research techs are single-use: don't add if already in queue
+      if (def?.category === "research" && state.run.queue.some((e) => e.actionId === action.actionId)) {
+        return state;
+      }
       const entry: QueueEntry = {
         uid: makeUid(),
         actionId: action.actionId,
-        repeat: action.repeat ?? 1,
+        repeat: def?.category === "research" ? 1 : (action.repeat ?? 1),
       };
       const run = { ...state.run, queue: [...state.run.queue, entry] };
       return { ...state, run };
@@ -472,9 +477,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "queue_set_repeat": {
-      const queue = state.run.queue.map((e) =>
-        e.uid === action.uid ? { ...e, repeat: action.repeat } : e,
-      );
+      const queue = state.run.queue.map((e) => {
+        if (e.uid !== action.uid) return e;
+        // Research techs are single-use: always repeat 1
+        const eDef = getActionDef(e.actionId);
+        if (eDef?.category === "research") return e;
+        return { ...e, repeat: action.repeat };
+      });
       const run = { ...state.run, queue };
       return { ...state, run };
     }

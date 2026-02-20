@@ -80,7 +80,7 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
             <div className="run-history-stats">
               <Stat label="Pop" value={`${r.population}/${r.maxPopulation}`} />
               <Stat label="Defense" value={`${Math.floor(r.militaryStrength)}+${Math.floor(r.wallDefense)}w`} />
-              <Stat label="Tech" value={r.techLevel} />
+              <Stat label="Tech" value={r.researchedTechs?.length ?? 0} />
             </div>
           </div>
 
