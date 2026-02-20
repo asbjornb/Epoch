@@ -37,9 +37,11 @@ const SKILL_ICONS: Record<string, string> = {
 export function ActionPalette({
   state,
   onActionClick,
+  currentQueue,
 }: {
   state: GameState;
   onActionClick: (actionId: ActionId) => void;
+  currentQueue?: QueueEntry[];
 }) {
   // Only show actions that are both in unlockedActions and meet skill level requirements
   const visible = ACTION_DEFS.filter(
@@ -47,6 +49,8 @@ export function ActionPalette({
       state.unlockedActions.includes(a.id) &&
       isActionUnlocked(state.skills, a.skill, a.unlockLevel),
   );
+
+  const queuedIds = (currentQueue ?? state.run.queue).map((e) => e.actionId);
 
   return (
     <div className="action-palette">
@@ -59,13 +63,17 @@ export function ActionPalette({
             state.run.resources.population,
             a.category,
           );
+          // Research techs are single-use: disabled if already queued
+          const isResearch = a.category === "research";
+          const alreadyQueued = isResearch && queuedIds.includes(a.id);
           return (
             <button
               key={a.id}
-              className="palette-action"
-              style={{ borderTopColor: SKILL_COLORS[a.skill] }}
-              onClick={() => onActionClick(a.id)}
-              title={a.description}
+              className={`palette-action${alreadyQueued ? " palette-action-disabled" : ""}`}
+              style={{ borderTopColor: SKILL_COLORS[a.skill], opacity: alreadyQueued ? 0.4 : 1 }}
+              onClick={() => !alreadyQueued && onActionClick(a.id)}
+              title={alreadyQueued ? `${a.name} already queued (single-use)` : a.description}
+              disabled={alreadyQueued}
             >
               <span className="palette-action-icon">{SKILL_ICONS[a.skill]}</span>
               <span className="palette-action-name">{a.name}</span>
@@ -131,39 +139,41 @@ function QueueItem({
             style={{ background: SKILL_COLORS[def.skill] }}
           />
           <span className="queue-item-name">{def.name}</span>
-          <span className="queue-repeat-control">
-            <button
-              className="queue-repeat-btn"
-              onClick={() => {
-                const next = Math.max(1, entry.repeat - 1);
-                onSetRepeat(entry.uid, next);
-              }}
-              title="Decrease"
-            >
-              -
-            </button>
-            <input
-              type="number"
-              className="queue-repeat-input"
-              value={entry.repeat}
-              min={1}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val) && val >= 1) {
-                  onSetRepeat(entry.uid, val);
-                }
-              }}
-            />
-            <button
-              className="queue-repeat-btn"
-              onClick={() => {
-                onSetRepeat(entry.uid, entry.repeat + 1);
-              }}
-              title="Increase"
-            >
-              +
-            </button>
-          </span>
+          {def.category !== "research" && (
+            <span className="queue-repeat-control">
+              <button
+                className="queue-repeat-btn"
+                onClick={() => {
+                  const next = Math.max(1, entry.repeat - 1);
+                  onSetRepeat(entry.uid, next);
+                }}
+                title="Decrease"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                className="queue-repeat-input"
+                value={entry.repeat}
+                min={1}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val) && val >= 1) {
+                    onSetRepeat(entry.uid, val);
+                  }
+                }}
+              />
+              <button
+                className="queue-repeat-btn"
+                onClick={() => {
+                  onSetRepeat(entry.uid, entry.repeat + 1);
+                }}
+                title="Increase"
+              >
+                +
+              </button>
+            </span>
+          )}
           {isActive && (
             <span className="queue-item-timer">
               {progress}/{duration} years
@@ -257,8 +267,8 @@ function QueuePreviewDisplay({
     items.push({ label: "Defense", value: `${totalDef}` });
   }
 
-  if (r.techLevel > 0) {
-    items.push({ label: "Tech", value: `Lv${r.techLevel} (+${r.techLevel * 10}%)` });
+  if (r.researchedTechs.length > 0) {
+    items.push({ label: "Tech", value: `${r.researchedTechs.length} researched` });
   }
 
   items.push({ label: "Storage", value: `${Math.floor(r.foodStorage)}` });
@@ -323,7 +333,13 @@ export function QueuePanel({
 
   // Draft queue callbacks
   const draftSetRepeat = (uid: string, repeat: number) =>
-    onDraftQueueChange(draftQueue.map((e) => (e.uid === uid ? { ...e, repeat } : e)));
+    onDraftQueueChange(draftQueue.map((e) => {
+      if (e.uid !== uid) return e;
+      // Research techs are single-use
+      const eDef = getActionDef(e.actionId);
+      if (eDef?.category === "research") return e;
+      return { ...e, repeat };
+    }));
   const draftMove = (uid: string, direction: "up" | "down") => {
     const q = [...draftQueue];
     const idx = q.findIndex((e) => e.uid === uid);

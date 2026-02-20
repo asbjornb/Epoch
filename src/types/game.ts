@@ -16,7 +16,7 @@ export interface Resources {
   militaryStrength: number;
   wallDefense: number;
   foodStorage: number;
-  techLevel: number;
+  researchedTechs: ActionId[];
 }
 
 export type ActionId =
@@ -26,6 +26,10 @@ export type ActionId =
   | "build_wall"
   | "train_militia"
   | "research_tools"
+  | "research_agriculture"
+  | "research_storage"
+  | "research_fortification"
+  | "research_tactics"
   | "gather_materials"
   | "scout"
   | "preserve_food";

@@ -64,13 +64,12 @@ export function ResourceBar({ resources, year, maxYear, encounteredDisasters }: 
             extra={resources.wallDefense > 0 ? `(${Math.floor(resources.militaryStrength)}+${Math.floor(resources.wallDefense)})` : undefined}
           />
         )}
-        {resources.techLevel > 0 && (
+        {resources.researchedTechs.length > 0 && (
           <ResourceItem
             label="Tech"
-            value={resources.techLevel}
+            value={resources.researchedTechs.length}
             icon="🔬"
             color="#6a8faa"
-            extra={`+${resources.techLevel * 10}%`}
           />
         )}
       </div>

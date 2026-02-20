@@ -48,7 +48,7 @@ export function createInitialResources(): Resources {
     militaryStrength: 0,
     wallDefense: 0,
     foodStorage: INITIAL_FOOD_STORAGE,
-    techLevel: 0,
+    researchedTechs: [],
   };
 }
 
@@ -87,9 +87,24 @@ export function getEffectiveDuration(
   return Math.max(1, Math.round(skillDuration));
 }
 
-/** Tech level gives a 10% output bonus per level */
-function getTechMultiplier(techLevel: number): number {
-  return 1.0 + techLevel * 0.1;
+/** Per-action tech multiplier based on which techs have been researched */
+function getTechMultiplierForAction(researchedTechs: string[], actionId: string): number {
+  let mult = 1.0;
+  if (researchedTechs.includes("research_tools") && actionId === "gather_materials") {
+    mult *= 1.5;
+  }
+  if (researchedTechs.includes("research_agriculture") && actionId === "farm") {
+    mult *= 1.5;
+  }
+  if (researchedTechs.includes("research_tactics") && (actionId === "train_militia" || actionId === "scout")) {
+    mult *= 1.5;
+  }
+  return mult;
+}
+
+/** Check if an action is a research tech (single-use) */
+function isResearchTech(actionId: string): boolean {
+  return actionId.startsWith("research_");
 }
 
 /** Population output multiplier: linear for resource/military, none for building/research */
@@ -185,9 +200,6 @@ export function tick(state: GameState): GameState {
     resources.population++;
   }
 
-  // Tech multiplier (applied to all actions)
-  const techMult = getTechMultiplier(resources.techLevel);
-
   // Process current action
   const current = getCurrentQueueEntry(run);
   if (!current && !run.repeatLastAction && run.queue.length > 0) {
@@ -202,39 +214,46 @@ export function tick(state: GameState): GameState {
     const { entry } = current;
     const def = getActionDef(entry.actionId);
     if (def) {
-      const skillLevel = skills[def.skill].level;
-      const duration = getEffectiveDuration(def.baseDuration, skillLevel, resources.population, def.category);
-      const popMult = getPopulationOutputMultiplier(resources.population, def.category);
-      const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
-
-      // Check material cost at start of action
-      if (run.currentActionProgress === 0 && def.materialCost && def.materialCost > resources.materials) {
-        log.push({
-          year: run.year,
-          message: `Cannot ${def.name}: need ${def.materialCost} materials (have ${Math.floor(resources.materials)}).`,
-          type: "warning",
-        });
+      // Skip already-researched techs
+      if (run.currentActionProgress === 0 && isResearchTech(entry.actionId) && resources.researchedTechs.includes(entry.actionId)) {
         run.currentActionProgress = 0;
         run.currentQueueIndex++;
       } else {
-        // Deduct materials at start of action
-        if (run.currentActionProgress === 0 && def.materialCost) {
-          resources.materials -= def.materialCost;
-        }
+        const skillLevel = skills[def.skill].level;
+        const duration = getEffectiveDuration(def.baseDuration, skillLevel, resources.population, def.category);
+        const popMult = getPopulationOutputMultiplier(resources.population, def.category);
+        const techMult = getTechMultiplierForAction(resources.researchedTechs, entry.actionId);
+        const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
 
-        // Per-tick effects
-        applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
-
-        // XP per tick
-        skills[def.skill] = addXp(skills[def.skill], 1);
-
-        run.currentActionProgress++;
-
-        // Action complete
-        if (run.currentActionProgress >= duration) {
-          applyActionCompletion(entry.actionId, resources, outputMult, log, run.year);
+        // Check material cost at start of action
+        if (run.currentActionProgress === 0 && def.materialCost && def.materialCost > resources.materials) {
+          log.push({
+            year: run.year,
+            message: `Cannot ${def.name}: need ${def.materialCost} materials (have ${Math.floor(resources.materials)}).`,
+            type: "warning",
+          });
           run.currentActionProgress = 0;
           run.currentQueueIndex++;
+        } else {
+          // Deduct materials at start of action
+          if (run.currentActionProgress === 0 && def.materialCost) {
+            resources.materials -= def.materialCost;
+          }
+
+          // Per-tick effects
+          applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
+
+          // XP per tick
+          skills[def.skill] = addXp(skills[def.skill], 1);
+
+          run.currentActionProgress++;
+
+          // Action complete
+          if (run.currentActionProgress >= duration) {
+            applyActionCompletion(entry.actionId, resources, outputMult, log, run.year);
+            run.currentActionProgress = 0;
+            run.currentQueueIndex++;
+          }
         }
       }
     }
@@ -257,7 +276,7 @@ export function tick(state: GameState): GameState {
       });
     } else {
       // Reward for surviving raiders
-      const foodBonus = Math.floor(50 * techMult);
+      const foodBonus = 50;
       const materialBonus = 20;
       resources.food += foodBonus;
       resources.materials += materialBonus;
@@ -411,8 +430,36 @@ function applyActionCompletion(
       log.push({ year, message: `Wall built. Wall defense now ${Math.floor(resources.wallDefense)}.`, type: "info" });
       break;
     case "research_tools":
-      resources.techLevel += 1;
-      log.push({ year, message: `Tool research complete. Tech level ${resources.techLevel} (+${resources.techLevel * 10}% output).`, type: "info" });
+      if (!resources.researchedTechs.includes("research_tools")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_tools"];
+      }
+      log.push({ year, message: "Improved Tools researched. Material gathering +50%.", type: "info" });
+      break;
+    case "research_agriculture":
+      if (!resources.researchedTechs.includes("research_agriculture")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_agriculture"];
+      }
+      log.push({ year, message: "Agriculture researched. Farming output +50%.", type: "info" });
+      break;
+    case "research_storage":
+      if (!resources.researchedTechs.includes("research_storage")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_storage"];
+      }
+      resources.foodStorage += 200;
+      log.push({ year, message: `Storage researched. Food storage +200 (now ${Math.floor(resources.foodStorage)}).`, type: "info" });
+      break;
+    case "research_fortification":
+      if (!resources.researchedTechs.includes("research_fortification")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_fortification"];
+      }
+      resources.wallDefense += 20;
+      log.push({ year, message: `Fortification researched. Wall defense +20 (now ${Math.floor(resources.wallDefense)}).`, type: "info" });
+      break;
+    case "research_tactics":
+      if (!resources.researchedTechs.includes("research_tactics")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_tactics"];
+      }
+      log.push({ year, message: "Tactics researched. Military training +50%.", type: "info" });
       break;
     case "preserve_food":
       resources.foodStorage += Math.floor(30 * outputMult);
@@ -437,7 +484,31 @@ function applyCompletionPreview(
       resources.wallDefense += Math.floor(8 * outputMult);
       break;
     case "research_tools":
-      resources.techLevel += 1;
+      if (!resources.researchedTechs.includes("research_tools")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_tools"];
+      }
+      break;
+    case "research_agriculture":
+      if (!resources.researchedTechs.includes("research_agriculture")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_agriculture"];
+      }
+      break;
+    case "research_storage":
+      if (!resources.researchedTechs.includes("research_storage")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_storage"];
+      }
+      resources.foodStorage += 200;
+      break;
+    case "research_fortification":
+      if (!resources.researchedTechs.includes("research_fortification")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_fortification"];
+      }
+      resources.wallDefense += 20;
+      break;
+    case "research_tactics":
+      if (!resources.researchedTechs.includes("research_tactics")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_tactics"];
+      }
       break;
     case "preserve_food":
       resources.foodStorage += Math.floor(30 * outputMult);
@@ -546,8 +617,15 @@ export function simulateQueuePreview(
       resources.population++;
     }
 
+    // Skip already-researched techs
+    if (actionProgress === 0 && isResearchTech(entry.actionId) && resources.researchedTechs.includes(entry.actionId)) {
+      actionProgress = 0;
+      queueLogicalIndex++;
+      continue;
+    }
+
     // Multipliers
-    const techMult = getTechMultiplier(resources.techLevel);
+    const techMult = getTechMultiplierForAction(resources.researchedTechs, entry.actionId);
     const skillLevel = simSkills[def.skill].level;
     const duration = getEffectiveDuration(def.baseDuration, skillLevel, resources.population, def.category);
     const popMult = getPopulationOutputMultiplier(resources.population, def.category);
