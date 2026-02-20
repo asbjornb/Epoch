@@ -336,6 +336,15 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
               Resume
             </button>
           )}
+          {(isRunning || isPaused) && (
+            <button
+              className="ctrl-btn danger"
+              onClick={() => dispatch({ type: "force_collapse" })}
+              title="Abandon this run and start fresh"
+            >
+              Collapse
+            </button>
+          )}
           {isEnded && (
             <button
               className="ctrl-btn primary"

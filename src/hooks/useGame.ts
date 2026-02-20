@@ -24,6 +24,7 @@ export type GameAction =
   | { type: "queue_move"; uid: string; direction: "up" | "down" }
   | { type: "queue_set_repeat"; uid: string; repeat: number }
   | { type: "queue_clear" }
+  | { type: "force_collapse" }
   | { type: "import_save"; state: GameState }
   | { type: "hard_reset" };
 
@@ -385,6 +386,16 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "queue_clear": {
       const run = { ...state.run, queue: [], currentQueueIndex: 0, currentActionProgress: 0 };
+      return { ...state, run };
+    }
+
+    case "force_collapse": {
+      if (state.run.status !== "running" && state.run.status !== "paused") return state;
+      const run = {
+        ...state.run,
+        status: "collapsed" as const,
+        collapseReason: "You abandoned your civilization.",
+      };
       return { ...state, run };
     }
 
