@@ -130,9 +130,22 @@ export function SettingsPanel({ state, dispatch, onClose, wakeLock }: SettingsPa
         )}
 
         {/* Event Pause Preferences */}
-        {state.autoDismissEventTypes.length > 0 && (
+        {(state.autoDismissEventTypes.length > 0 || state.autoDismissRunSummary) && (
           <div className="settings-section">
             <div className="settings-section-label">Event Pause Settings</div>
+            {state.autoDismissRunSummary && (
+              <div className="settings-auto-dismiss-item">
+                <span className="settings-auto-dismiss-name">
+                  Run Summary (Collapse/Victory)
+                </span>
+                <button
+                  className="settings-auto-dismiss-undo"
+                  onClick={() => dispatch({ type: "set_auto_dismiss_run_summary", value: false })}
+                >
+                  Show full details
+                </button>
+              </div>
+            )}
             <div className="settings-auto-dismiss-list">
               {state.autoDismissEventTypes.map((eventId) => (
                 <div key={eventId} className="settings-auto-dismiss-item">
