@@ -69,7 +69,7 @@ function App() {
 
       <main className="app-main">
         <div className="main-queue">
-          <QueuePanel state={state} totalRuns={state.totalRuns} dispatch={dispatch} />
+          <QueuePanel state={state} dispatch={dispatch} />
         </div>
         <div className="main-sidebar">
           <SkillsPanel skills={state.skills} />
@@ -101,7 +101,7 @@ function App() {
 
       {/* Log modal */}
       {logOpen && (
-        <LogModal log={state.run.log} runHistory={state.runHistory} onClose={() => setLogOpen(false)} />
+        <LogModal log={state.run.log} runHistory={state.runHistory} totalRuns={state.totalRuns + 1} onClose={() => setLogOpen(false)} />
       )}
 
       {/* Skills modal for mobile */}
