@@ -32,7 +32,7 @@ export function RunSummaryModal({
   const yearDelta = lastRunYear > 0 ? run.year - lastRunYear : null;
 
   // Compute years remaining on the last action in progress
-  let lastActionInfo: { name: string; yearsRemaining: number } | null = null;
+  let lastActionInfo: { name: string; yearsDone: number; totalDuration: number; yearsRemaining: number } | null = null;
   if (run.currentActionProgress > 0 && run.queue.length > 0) {
     let arrayIdx = -1;
     let logicalPos = 0;
@@ -55,6 +55,8 @@ export function RunSummaryModal({
         const duration = getEffectiveDuration(def.baseDuration, skillLevel);
         lastActionInfo = {
           name: def.name,
+          yearsDone: run.currentActionProgress,
+          totalDuration: duration,
           yearsRemaining: duration - run.currentActionProgress,
         };
       }
@@ -108,9 +110,9 @@ export function RunSummaryModal({
 
         {lastActionInfo && (
           <div className="run-summary-last-action">
-            <span className="run-summary-label">Last Action</span>
+            <span className="run-summary-label">Incomplete Action</span>
             <span className="run-summary-value">
-              {lastActionInfo.name} — {lastActionInfo.yearsRemaining} yr{lastActionInfo.yearsRemaining !== 1 ? "s" : ""} remaining
+              {lastActionInfo.name} — {lastActionInfo.yearsDone}/{lastActionInfo.totalDuration} yrs ({lastActionInfo.yearsRemaining} remaining)
             </span>
           </div>
         )}

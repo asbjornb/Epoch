@@ -68,9 +68,9 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
 
           {entry.lastActionId != null && entry.lastActionYearsRemaining != null && (
             <div className="run-history-section">
-              <div className="run-history-section-label">Last Action</div>
+              <div className="run-history-section-label">Incomplete Action</div>
               <div className="run-history-last-action">
-                {getActionDef(entry.lastActionId)?.name ?? entry.lastActionId} — {entry.lastActionYearsRemaining} yr{entry.lastActionYearsRemaining !== 1 ? "s" : ""} remaining
+                {getActionDef(entry.lastActionId)?.name ?? entry.lastActionId} — {entry.lastActionYearsDone ?? 0}/{(entry.lastActionYearsDone ?? 0) + entry.lastActionYearsRemaining} yrs ({entry.lastActionYearsRemaining} remaining)
               </div>
             </div>
           )}
@@ -103,10 +103,13 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
 
           {(() => {
             const performed = entry.queue.filter((qe) => (qe.completions ?? 0) > 0);
+            const hasIncomplete = entry.lastActionId != null && entry.lastActionYearsRemaining != null;
+            const incompleteActionDef = hasIncomplete ? getActionDef(entry.lastActionId!) : null;
+            const totalDuration = hasIncomplete ? (entry.lastActionYearsDone ?? 0) + entry.lastActionYearsRemaining! : 0;
             return (
               <div className="run-history-section">
                 <div className="run-history-section-label">Actions</div>
-                {performed.length === 0 ? (
+                {performed.length === 0 && !hasIncomplete ? (
                   <div className="run-history-queue-empty">No actions completed</div>
                 ) : (
                   <div className="run-history-queue">
@@ -129,6 +132,17 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
                         </div>
                       );
                     })}
+                    {hasIncomplete && (
+                      <div className="run-history-action-row run-history-action-incomplete">
+                        <span className="run-history-action-index">{performed.length + 1}.</span>
+                        <span className="run-history-action-name">
+                          {incompleteActionDef?.name ?? entry.lastActionId}
+                        </span>
+                        <span className="run-history-action-progress">
+                          {entry.lastActionYearsDone ?? 0}/{totalDuration} yrs
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

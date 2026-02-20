@@ -101,6 +101,7 @@ export interface RunHistoryEntry {
   skillsGained?: Partial<Record<SkillName, number>>;
   lastActionId?: ActionId;
   lastActionYearsRemaining?: number;
+  lastActionYearsDone?: number;
 }
 
 export interface GameState {
