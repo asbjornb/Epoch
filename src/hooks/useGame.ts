@@ -6,9 +6,9 @@ import type {
   RunHistoryEntry,
   SkillName,
 } from "../types/game.ts";
-import { ACTION_DEFS } from "../types/actions.ts";
+import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { initialSkills, isActionUnlocked } from "../engine/skills.ts";
-import { createInitialRun, tick } from "../engine/simulation.ts";
+import { createInitialRun, tick, getEffectiveDuration } from "../engine/simulation.ts";
 
 export type GameAction =
   | { type: "tick" }
@@ -319,6 +319,36 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         if (gained > 0) skillsGained[name] = gained;
       }
 
+      // Compute years remaining on the last action in progress
+      let lastActionId: ActionId | undefined;
+      let lastActionYearsRemaining: number | undefined;
+      if (state.run.currentActionProgress > 0 && state.run.queue.length > 0) {
+        // Find the queue entry that was in progress
+        let arrayIdx = -1;
+        let logicalPos = 0;
+        for (let i = 0; i < state.run.queue.length; i++) {
+          const reps = state.run.queue[i].repeat;
+          if (reps === -1 || logicalPos + reps > state.run.currentQueueIndex) {
+            arrayIdx = i;
+            break;
+          }
+          logicalPos += reps;
+        }
+        if (arrayIdx === -1 && state.run.repeatLastAction) {
+          arrayIdx = state.run.queue.length - 1;
+        }
+        if (arrayIdx >= 0) {
+          const activeEntry = state.run.queue[arrayIdx];
+          const def = getActionDef(activeEntry.actionId);
+          if (def) {
+            const skillLevel = state.skills[def.skill].level;
+            const duration = getEffectiveDuration(def.baseDuration, skillLevel);
+            lastActionId = activeEntry.actionId;
+            lastActionYearsRemaining = duration - state.run.currentActionProgress;
+          }
+        }
+      }
+
       const historyEntry: RunHistoryEntry = {
         runNumber: totalRuns,
         year: state.run.year,
@@ -332,6 +362,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         resources: { ...state.run.resources },
         totalFoodSpoiled: state.run.totalFoodSpoiled || 0,
         ...(Object.keys(skillsGained).length > 0 && { skillsGained }),
+        ...(lastActionId && lastActionYearsRemaining != null && { lastActionId, lastActionYearsRemaining }),
       };
       const runHistory = [historyEntry, ...state.runHistory].slice(0, 10);
       localStorage.setItem("epoch_run_history", JSON.stringify(runHistory));

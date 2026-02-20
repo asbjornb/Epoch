@@ -1,4 +1,6 @@
 import type { RunState, Skills, SkillName } from "../types/game.ts";
+import { getActionDef } from "../types/actions.ts";
+import { getEffectiveDuration } from "../engine/simulation.ts";
 
 interface RunSummaryModalProps {
   run: RunState;
@@ -28,6 +30,36 @@ export function RunSummaryModal({
 }: RunSummaryModalProps) {
   const isVictory = run.status === "victory";
   const yearDelta = lastRunYear > 0 ? run.year - lastRunYear : null;
+
+  // Compute years remaining on the last action in progress
+  let lastActionInfo: { name: string; yearsRemaining: number } | null = null;
+  if (run.currentActionProgress > 0 && run.queue.length > 0) {
+    let arrayIdx = -1;
+    let logicalPos = 0;
+    for (let i = 0; i < run.queue.length; i++) {
+      const reps = run.queue[i].repeat;
+      if (reps === -1 || logicalPos + reps > run.currentQueueIndex) {
+        arrayIdx = i;
+        break;
+      }
+      logicalPos += reps;
+    }
+    if (arrayIdx === -1 && run.repeatLastAction) {
+      arrayIdx = run.queue.length - 1;
+    }
+    if (arrayIdx >= 0) {
+      const activeEntry = run.queue[arrayIdx];
+      const def = getActionDef(activeEntry.actionId);
+      if (def) {
+        const skillLevel = skills[def.skill].level;
+        const duration = getEffectiveDuration(def.baseDuration, skillLevel);
+        lastActionInfo = {
+          name: def.name,
+          yearsRemaining: duration - run.currentActionProgress,
+        };
+      }
+    }
+  }
 
   const skillDeltas = SKILL_META.map(({ id, name, color }) => {
     const start = skillsAtRunStart[id];
@@ -73,6 +105,15 @@ export function RunSummaryModal({
             </div>
           )}
         </div>
+
+        {lastActionInfo && (
+          <div className="run-summary-last-action">
+            <span className="run-summary-label">Last Action</span>
+            <span className="run-summary-value">
+              {lastActionInfo.name} — {lastActionInfo.yearsRemaining} yr{lastActionInfo.yearsRemaining !== 1 ? "s" : ""} remaining
+            </span>
+          </div>
+        )}
 
         {skillDeltas.length > 0 && (
           <div className="run-summary-skills">
