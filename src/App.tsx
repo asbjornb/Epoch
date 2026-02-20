@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useGame } from "./hooks/useGame.ts";
+import { useGame, makeUid } from "./hooks/useGame.ts";
 import { useWakeLock } from "./hooks/useWakeLock.ts";
 import { QueuePanel, ActionPalette } from "./components/QueuePanel.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
@@ -8,6 +8,7 @@ import { EventModal } from "./components/EventModal.tsx";
 import { RunSummaryModal } from "./components/RunSummaryModal.tsx";
 import { LogModal } from "./components/LogModal.tsx";
 import { SettingsPanel } from "./components/SettingsPanel.tsx";
+import type { ActionId, QueueEntry } from "./types/game.ts";
 
 function App() {
   const { state, dispatch } = useGame();
@@ -17,6 +18,19 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [summaryDismissedAtRun, setSummaryDismissedAtRun] = useState(-1);
+
+  // Draft queue state
+  const [draftMode, setDraftMode] = useState(false);
+  const [draftQueue, setDraftQueue] = useState<QueueEntry[]>([]);
+  const [draftRepeatLast, setDraftRepeatLast] = useState(true);
+
+  const handleActionClick = useCallback((actionId: ActionId) => {
+    if (draftMode) {
+      setDraftQueue((prev) => [...prev, { uid: makeUid(), actionId, repeat: 1 }]);
+    } else {
+      dispatch({ type: "queue_add", actionId });
+    }
+  }, [draftMode, dispatch]);
 
   const isEnded = state.run.status === "collapsed" || state.run.status === "victory";
   const showRunSummary = isEnded && state.totalRuns !== summaryDismissedAtRun;
@@ -70,10 +84,19 @@ function App() {
 
       <main className="app-main">
         <div className="main-actions">
-          <ActionPalette state={state} dispatch={dispatch} />
+          <ActionPalette state={state} onActionClick={handleActionClick} />
         </div>
         <div className="main-queue">
-          <QueuePanel state={state} dispatch={dispatch} />
+          <QueuePanel
+            state={state}
+            dispatch={dispatch}
+            draftMode={draftMode}
+            onDraftModeChange={setDraftMode}
+            draftQueue={draftQueue}
+            onDraftQueueChange={setDraftQueue}
+            draftRepeatLast={draftRepeatLast}
+            onDraftRepeatLastChange={setDraftRepeatLast}
+          />
         </div>
         <div className="main-sidebar">
           <SkillsPanel skills={state.skills} />
@@ -100,7 +123,7 @@ function App() {
                 ✕
               </button>
             </div>
-            <ActionPalette state={state} dispatch={dispatch} />
+            <ActionPalette state={state} onActionClick={handleActionClick} />
           </div>
         </div>
       )}

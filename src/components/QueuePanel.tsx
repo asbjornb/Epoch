@@ -12,6 +12,12 @@ import type { GameAction } from "../hooks/useGame.ts";
 interface QueuePanelProps {
   state: GameState;
   dispatch: React.Dispatch<GameAction>;
+  draftMode: boolean;
+  onDraftModeChange: (mode: boolean) => void;
+  draftQueue: QueueEntry[];
+  onDraftQueueChange: (queue: QueueEntry[]) => void;
+  draftRepeatLast: boolean;
+  onDraftRepeatLastChange: (val: boolean) => void;
 }
 
 const SKILL_COLORS: Record<string, string> = {
@@ -30,10 +36,10 @@ const SKILL_ICONS: Record<string, string> = {
 
 export function ActionPalette({
   state,
-  dispatch,
+  onActionClick,
 }: {
   state: GameState;
-  dispatch: React.Dispatch<GameAction>;
+  onActionClick: (actionId: ActionId) => void;
 }) {
   // Only show actions that are both in unlockedActions and meet skill level requirements
   const visible = ACTION_DEFS.filter(
@@ -59,7 +65,7 @@ export function ActionPalette({
               key={a.id}
               className="palette-action"
               style={{ borderTopColor: SKILL_COLORS[a.skill] }}
-              onClick={() => dispatch({ type: "queue_add", actionId: a.id })}
+              onClick={() => onActionClick(a.id)}
               title={a.description}
             >
               <span className="palette-action-icon">{SKILL_ICONS[a.skill]}</span>
@@ -86,7 +92,9 @@ function QueueItem({
   isRepeatingLast,
   isFirst,
   isLast,
-  dispatch,
+  onSetRepeat,
+  onMove,
+  onRemove,
 }: {
   entry: QueueEntry;
   index: number;
@@ -97,7 +105,9 @@ function QueueItem({
   isRepeatingLast: boolean;
   isFirst: boolean;
   isLast: boolean;
-  dispatch: React.Dispatch<GameAction>;
+  onSetRepeat: (uid: string, repeat: number) => void;
+  onMove: (uid: string, direction: "up" | "down") => void;
+  onRemove: (uid: string) => void;
 }) {
   const def = getActionDef(entry.actionId);
   if (!def) return null;
@@ -127,7 +137,7 @@ function QueueItem({
               className="queue-repeat-btn"
               onClick={() => {
                 const next = Math.max(1, entry.repeat - 1);
-                dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: next });
+                onSetRepeat(entry.uid, next);
               }}
               title="Decrease"
             >
@@ -141,14 +151,14 @@ function QueueItem({
               onChange={(e) => {
                 const val = parseInt(e.target.value, 10);
                 if (!isNaN(val) && val >= 1) {
-                  dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: val });
+                  onSetRepeat(entry.uid, val);
                 }
               }}
             />
             <button
               className="queue-repeat-btn"
               onClick={() => {
-                dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: entry.repeat + 1 });
+                onSetRepeat(entry.uid, entry.repeat + 1);
               }}
               title="Increase"
             >
@@ -164,9 +174,7 @@ function QueueItem({
         <div className="queue-item-right">
           <button
             className="queue-btn"
-            onClick={() =>
-              dispatch({ type: "queue_move", uid: entry.uid, direction: "up" })
-            }
+            onClick={() => onMove(entry.uid, "up")}
             disabled={isFirst}
             title="Move up"
           >
@@ -174,13 +182,7 @@ function QueueItem({
           </button>
           <button
             className="queue-btn"
-            onClick={() =>
-              dispatch({
-                type: "queue_move",
-                uid: entry.uid,
-                direction: "down",
-              })
-            }
+            onClick={() => onMove(entry.uid, "down")}
             disabled={isLast}
             title="Move down"
           >
@@ -188,9 +190,7 @@ function QueueItem({
           </button>
           <button
             className="queue-btn danger"
-            onClick={() =>
-              dispatch({ type: "queue_remove", uid: entry.uid })
-            }
+            onClick={() => onRemove(entry.uid)}
             title="Remove"
           >
             ✕
@@ -229,14 +229,16 @@ function QueueItem({
 }
 
 function QueuePreviewDisplay({
-  state,
+  queue,
+  skills,
+  repeatLastAction,
+  label,
 }: {
-  state: GameState;
+  queue: QueueEntry[];
+  skills: GameState["skills"];
+  repeatLastAction: boolean;
+  label?: string;
 }) {
-  const { run, skills } = state;
-  const queue = run.queue;
-
-  const { repeatLastAction } = run;
   const preview = useMemo(
     () => simulateQueuePreview(queue, skills, repeatLastAction),
     [queue, skills, repeatLastAction],
@@ -263,11 +265,12 @@ function QueuePreviewDisplay({
   items.push({ label: "Storage", value: `${Math.floor(r.foodStorage)}` });
 
   return (
-    <div className="queue-preview">
+    <div className={`queue-preview${preview.collapsed ? " queue-preview-collapsed" : ""}`}>
       <div className="queue-preview-header">
-        <span className="queue-preview-label">Projected outcome</span>
+        <span className="queue-preview-label">{label ?? "Projected outcome"}</span>
         <span className="queue-preview-years">
           {preview.yearsUsed.toLocaleString()} years
+          {preview.collapsed && " (collapses)"}
         </span>
       </div>
       <div className="queue-preview-items">
@@ -282,7 +285,16 @@ function QueuePreviewDisplay({
   );
 }
 
-export function QueuePanel({ state, dispatch }: QueuePanelProps) {
+export function QueuePanel({
+  state,
+  dispatch,
+  draftMode,
+  onDraftModeChange,
+  draftQueue,
+  onDraftQueueChange,
+  draftRepeatLast,
+  onDraftRepeatLastChange,
+}: QueuePanelProps) {
   const { run, skills } = state;
   const queue = run.queue;
 
@@ -291,7 +303,7 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
   const isPaused = run.status === "paused";
   const isEnded = run.status === "collapsed" || run.status === "victory";
 
-  const getEffectiveDuration = (actionId: ActionId) => {
+  const getEffDuration = (actionId: ActionId) => {
     const def = getActionDef(actionId);
     if (!def) return 1;
     return Math.max(
@@ -302,77 +314,148 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
     );
   };
 
-  const hasInfiniteRepeat = queue.some((e) => e.repeat === -1);
-  const totalYears = hasInfiniteRepeat
-    ? null
-    : queue.reduce(
-        (sum, e) => {
-          const dur = getEffectiveDuration(e.actionId);
-          const reps = e.repeat;
-          return sum + dur * reps;
-        },
-        0,
-      );
+  // Live queue callbacks
+  const liveSetRepeat = (uid: string, repeat: number) =>
+    dispatch({ type: "queue_set_repeat", uid, repeat });
+  const liveMove = (uid: string, direction: "up" | "down") =>
+    dispatch({ type: "queue_move", uid, direction });
+  const liveRemove = (uid: string) =>
+    dispatch({ type: "queue_remove", uid });
+
+  // Draft queue callbacks
+  const draftSetRepeat = (uid: string, repeat: number) =>
+    onDraftQueueChange(draftQueue.map((e) => (e.uid === uid ? { ...e, repeat } : e)));
+  const draftMove = (uid: string, direction: "up" | "down") => {
+    const q = [...draftQueue];
+    const idx = q.findIndex((e) => e.uid === uid);
+    if (idx < 0) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= q.length) return;
+    [q[idx], q[swapIdx]] = [q[swapIdx], q[idx]];
+    onDraftQueueChange(q);
+  };
+  const draftRemove = (uid: string) =>
+    onDraftQueueChange(draftQueue.filter((e) => e.uid !== uid));
+
+  const applyDraft = () => {
+    dispatch({ type: "queue_load", queue: draftQueue, repeatLastAction: draftRepeatLast });
+    onDraftModeChange(false);
+  };
+
+  const copyFromLive = () => {
+    onDraftQueueChange(queue.map((e) => ({ ...e })));
+    onDraftRepeatLastChange(run.repeatLastAction);
+  };
+
+  // Queue stats
+  const computeQueueStats = (q: QueueEntry[]) => {
+    const hasInfinite = q.some((e) => e.repeat === -1);
+    const total = hasInfinite
+      ? null
+      : q.reduce((sum, e) => sum + getEffDuration(e.actionId) * e.repeat, 0);
+    return { count: q.length, totalYears: total };
+  };
+
+  const liveStats = computeQueueStats(queue);
+  const draftStats = computeQueueStats(draftQueue);
 
   return (
     <div className="queue-panel">
       <div className="queue-header">
         <div className="queue-header-left">
-          <h2>Queue</h2>
+          <div className="queue-tabs">
+            <button
+              className={`queue-tab ${!draftMode ? "active" : ""}`}
+              onClick={() => onDraftModeChange(false)}
+            >
+              Queue
+            </button>
+            <button
+              className={`queue-tab ${draftMode ? "active" : ""}`}
+              onClick={() => onDraftModeChange(true)}
+            >
+              Draft
+            </button>
+          </div>
           <div className="queue-meta">
-            <span className="queue-count">{queue.length} actions</span>
-            {totalYears !== null && (
-              <span className="queue-total-years">~{totalYears} years</span>
+            {draftMode ? (
+              <>
+                <span className="queue-count">{draftStats.count} actions</span>
+                {draftStats.totalYears !== null && (
+                  <span className="queue-total-years">~{draftStats.totalYears} years</span>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="queue-count">{liveStats.count} actions</span>
+                {liveStats.totalYears !== null && (
+                  <span className="queue-total-years">~{liveStats.totalYears} years</span>
+                )}
+              </>
             )}
           </div>
         </div>
         <div className="queue-header-right">
-          {isIdle && (
+          {!draftMode && (
+            <>
+              {isIdle && (
+                <button
+                  className="ctrl-btn primary"
+                  onClick={() => dispatch({ type: "start_run" })}
+                  disabled={run.queue.length === 0}
+                >
+                  Start
+                </button>
+              )}
+              {isRunning && (
+                <button
+                  className="ctrl-btn"
+                  onClick={() => dispatch({ type: "pause_run" })}
+                >
+                  Pause
+                </button>
+              )}
+              {isPaused && (
+                <button
+                  className="ctrl-btn primary"
+                  onClick={() => dispatch({ type: "resume_run" })}
+                >
+                  Resume
+                </button>
+              )}
+              {(isRunning || isPaused) && (
+                <button
+                  className="ctrl-btn danger"
+                  onClick={() => dispatch({ type: "force_collapse" })}
+                  title="Abandon this run and start fresh"
+                >
+                  Collapse
+                </button>
+              )}
+              {isEnded && (
+                <button
+                  className="ctrl-btn primary"
+                  onClick={() => dispatch({ type: "reset_run" })}
+                >
+                  New Run
+                </button>
+              )}
+            </>
+          )}
+          {draftMode && (
             <button
               className="ctrl-btn primary"
-              onClick={() => dispatch({ type: "start_run" })}
-              disabled={run.queue.length === 0}
+              onClick={applyDraft}
+              disabled={draftQueue.length === 0}
+              title="Replace live queue with this draft"
             >
-              Start
-            </button>
-          )}
-          {isRunning && (
-            <button
-              className="ctrl-btn"
-              onClick={() => dispatch({ type: "pause_run" })}
-            >
-              Pause
-            </button>
-          )}
-          {isPaused && (
-            <button
-              className="ctrl-btn primary"
-              onClick={() => dispatch({ type: "resume_run" })}
-            >
-              Resume
-            </button>
-          )}
-          {(isRunning || isPaused) && (
-            <button
-              className="ctrl-btn danger"
-              onClick={() => dispatch({ type: "force_collapse" })}
-              title="Abandon this run and start fresh"
-            >
-              Collapse
-            </button>
-          )}
-          {isEnded && (
-            <button
-              className="ctrl-btn primary"
-              onClick={() => dispatch({ type: "reset_run" })}
-            >
-              New Run
+              Apply
             </button>
           )}
         </div>
       </div>
 
-      {isEnded && (
+      {!draftMode && isEnded && (
         <div
           className={`run-result ${run.status === "victory" ? "victory" : "collapse"}`}
         >
@@ -385,117 +468,204 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
         </div>
       )}
 
-      <div className="queue-list-container">
-        {queue.length === 0 ? (
-          <div className="queue-empty">
-            <p>No actions queued.</p>
-            <p className="queue-empty-hint">
-              Select an action to add it to the queue.
-            </p>
+      {/* ===== Live Queue View ===== */}
+      {!draftMode && (
+        <>
+          <div className="queue-list-container">
+            {queue.length === 0 ? (
+              <div className="queue-empty">
+                <p>No actions queued.</p>
+                <p className="queue-empty-hint">
+                  Select an action to add it to the queue.
+                </p>
+              </div>
+            ) : (
+              <div className="queue-list">
+                {(() => {
+                  let activeArrayIdx = -1;
+                  let activeLogicalStart = 0;
+                  let logicalPos = 0;
+                  for (let j = 0; j < queue.length; j++) {
+                    const reps = queue[j].repeat;
+                    if (logicalPos + reps > run.currentQueueIndex) {
+                      activeArrayIdx = j;
+                      activeLogicalStart = logicalPos;
+                      break;
+                    }
+                    logicalPos += reps;
+                  }
+                  let isRepeatingLast = false;
+                  if (activeArrayIdx === -1 && run.repeatLastAction) {
+                    activeArrayIdx = queue.length - 1;
+                    activeLogicalStart = logicalPos;
+                    isRepeatingLast = true;
+                  }
+                  const currentRepeat = run.currentQueueIndex - activeLogicalStart + 1;
+
+                  return queue.map((entry, i) => {
+                    const isActive = run.status === "running" && i === activeArrayIdx;
+                    const duration = getEffDuration(entry.actionId);
+                    return (
+                      <QueueItem
+                        key={entry.uid}
+                        entry={entry}
+                        index={i}
+                        isActive={isActive}
+                        progress={isActive ? run.currentActionProgress : 0}
+                        duration={duration}
+                        currentRepeat={isActive ? currentRepeat : 0}
+                        isRepeatingLast={isRepeatingLast && i === activeArrayIdx}
+                        isFirst={i === 0}
+                        isLast={i === queue.length - 1}
+                        onSetRepeat={liveSetRepeat}
+                        onMove={liveMove}
+                        onRemove={liveRemove}
+                      />
+                    );
+                  });
+                })()}
+                <div className="queue-toggles">
+                  <button
+                    className={`queue-toggle-row ${run.repeatLastAction ? "active" : ""}`}
+                    onClick={() => dispatch({ type: "toggle_repeat_last_action" })}
+                    title={run.repeatLastAction
+                      ? "Currently repeating last action until collapse. Click to pause at queue end instead."
+                      : "Currently pausing at queue end. Click to repeat last action until collapse."}
+                  >
+                    <span className="queue-toggle-label">
+                      {run.repeatLastAction
+                        ? "Repeat last action until collapse"
+                        : "Pause at queue end"}
+                    </span>
+                    <span className="queue-toggle-switch">
+                      <span className="queue-toggle-track">
+                        <span className="queue-toggle-knob" />
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    className={`queue-toggle-row ${run.autoRestart ? "active" : ""}`}
+                    onClick={() => dispatch({ type: "toggle_auto_restart" })}
+                    title={run.autoRestart
+                      ? "Automatically restarting on collapse. Click to stop at end instead."
+                      : "Stopping on collapse. Click to auto-restart instead."}
+                  >
+                    <span className="queue-toggle-label">
+                      {run.autoRestart
+                        ? "Auto-restart on collapse"
+                        : "Stop on collapse"}
+                    </span>
+                    <span className="queue-toggle-switch">
+                      <span className="queue-toggle-track">
+                        <span className="queue-toggle-knob" />
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="queue-list">
-            {(() => {
-              // Determine which queue array index is currently active
-              // currentQueueIndex is a logical position counting repeats
-              let activeArrayIdx = -1;
-              let activeLogicalStart = 0;
-              let logicalPos = 0;
-              for (let j = 0; j < queue.length; j++) {
-                const reps = queue[j].repeat;
-                if (logicalPos + reps > run.currentQueueIndex) {
-                  activeArrayIdx = j;
-                  activeLogicalStart = logicalPos;
-                  break;
-                }
-                logicalPos += reps;
-              }
-              let isRepeatingLast = false;
-              if (activeArrayIdx === -1 && run.repeatLastAction) {
-                activeArrayIdx = queue.length - 1;
-                // For repeat-last-action, compute how far past the queue we are
-                activeLogicalStart = logicalPos;
-                isRepeatingLast = true;
-              }
 
-              // Current repeat iteration (1-indexed)
-              const currentRepeat = run.currentQueueIndex - activeLogicalStart + 1;
+          <QueuePreviewDisplay
+            queue={queue}
+            skills={skills}
+            repeatLastAction={run.repeatLastAction}
+          />
 
-              return queue.map((entry, i) => {
-                const isActive =
-                  run.status === "running" && i === activeArrayIdx;
-                const duration = getEffectiveDuration(entry.actionId);
-                return (
-                  <QueueItem
-                    key={entry.uid}
-                    entry={entry}
-                    index={i}
-                    isActive={isActive}
-                    progress={isActive ? run.currentActionProgress : 0}
-                    duration={duration}
-                    currentRepeat={isActive ? currentRepeat : 0}
-                    isRepeatingLast={isRepeatingLast && i === activeArrayIdx}
-                    isFirst={i === 0}
-                    isLast={i === queue.length - 1}
-                    dispatch={dispatch}
-                  />
-                );
-              });
-            })()}
-            <div className="queue-toggles">
-              <button
-                className={`queue-toggle-row ${run.repeatLastAction ? "active" : ""}`}
-                onClick={() => dispatch({ type: "toggle_repeat_last_action" })}
-                title={run.repeatLastAction
-                  ? "Currently repeating last action until collapse. Click to pause at queue end instead."
-                  : "Currently pausing at queue end. Click to repeat last action until collapse."}
-              >
-                <span className="queue-toggle-label">
-                  {run.repeatLastAction
-                    ? "Repeat last action until collapse"
-                    : "Pause at queue end"}
-                </span>
-                <span className="queue-toggle-switch">
-                  <span className="queue-toggle-track">
-                    <span className="queue-toggle-knob" />
-                  </span>
-                </span>
-              </button>
-              <button
-                className={`queue-toggle-row ${run.autoRestart ? "active" : ""}`}
-                onClick={() => dispatch({ type: "toggle_auto_restart" })}
-                title={run.autoRestart
-                  ? "Automatically restarting on collapse. Click to stop at end instead."
-                  : "Stopping on collapse. Click to auto-restart instead."}
-              >
-                <span className="queue-toggle-label">
-                  {run.autoRestart
-                    ? "Auto-restart on collapse"
-                    : "Stop on collapse"}
-                </span>
-                <span className="queue-toggle-switch">
-                  <span className="queue-toggle-track">
-                    <span className="queue-toggle-knob" />
-                  </span>
-                </span>
-              </button>
-            </div>
+          <div className="queue-actions-bar">
+            <button
+              className="queue-clear-btn"
+              onClick={() => dispatch({ type: "queue_clear" })}
+              disabled={queue.length === 0}
+            >
+              Clear Queue
+            </button>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      <QueuePreviewDisplay state={state} />
+      {/* ===== Draft Queue View ===== */}
+      {draftMode && (
+        <>
+          <div className="queue-list-container">
+            {draftQueue.length === 0 ? (
+              <div className="queue-empty">
+                <p>Draft is empty.</p>
+                <p className="queue-empty-hint">
+                  Add actions to plan your next queue, or copy the current one.
+                </p>
+              </div>
+            ) : (
+              <div className="queue-list">
+                {draftQueue.map((entry, i) => {
+                  const duration = getEffDuration(entry.actionId);
+                  return (
+                    <QueueItem
+                      key={entry.uid}
+                      entry={entry}
+                      index={i}
+                      isActive={false}
+                      progress={0}
+                      duration={duration}
+                      currentRepeat={0}
+                      isRepeatingLast={false}
+                      isFirst={i === 0}
+                      isLast={i === draftQueue.length - 1}
+                      onSetRepeat={draftSetRepeat}
+                      onMove={draftMove}
+                      onRemove={draftRemove}
+                    />
+                  );
+                })}
+                <div className="queue-toggles">
+                  <button
+                    className={`queue-toggle-row ${draftRepeatLast ? "active" : ""}`}
+                    onClick={() => onDraftRepeatLastChange(!draftRepeatLast)}
+                    title={draftRepeatLast
+                      ? "Draft: repeating last action. Click to pause at queue end."
+                      : "Draft: pausing at queue end. Click to repeat last action."}
+                  >
+                    <span className="queue-toggle-label">
+                      {draftRepeatLast
+                        ? "Repeat last action until collapse"
+                        : "Pause at queue end"}
+                    </span>
+                    <span className="queue-toggle-switch">
+                      <span className="queue-toggle-track">
+                        <span className="queue-toggle-knob" />
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
-      <div className="queue-actions-bar">
-        <button
-          className="queue-clear-btn"
-          onClick={() => dispatch({ type: "queue_clear" })}
-          disabled={queue.length === 0}
-        >
-          Clear Queue
-        </button>
-      </div>
+          <QueuePreviewDisplay
+            queue={draftQueue}
+            skills={skills}
+            repeatLastAction={draftRepeatLast}
+            label="Draft projection"
+          />
 
+          <div className="queue-actions-bar">
+            <button
+              className="queue-clear-btn"
+              onClick={copyFromLive}
+              title="Copy current live queue into draft"
+            >
+              Copy Current
+            </button>
+            <button
+              className="queue-clear-btn"
+              onClick={() => onDraftQueueChange([])}
+              disabled={draftQueue.length === 0}
+            >
+              Clear Draft
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

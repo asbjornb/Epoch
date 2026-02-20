@@ -25,12 +25,13 @@ export type GameAction =
   | { type: "queue_move"; uid: string; direction: "up" | "down" }
   | { type: "queue_set_repeat"; uid: string; repeat: number }
   | { type: "queue_clear" }
+  | { type: "queue_load"; queue: QueueEntry[]; repeatLastAction: boolean }
   | { type: "force_collapse" }
   | { type: "import_save"; state: GameState }
   | { type: "hard_reset" };
 
 let uidCounter = 0;
-function makeUid(): string {
+export function makeUid(): string {
   return `q_${++uidCounter}_${Date.now()}`;
 }
 
@@ -476,6 +477,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "queue_clear": {
       const run = { ...state.run, queue: [], currentQueueIndex: 0, currentActionProgress: 0 };
+      return { ...state, run };
+    }
+
+    case "queue_load": {
+      const newQueue = action.queue.map((e) => ({ ...e, uid: makeUid() }));
+      const run = {
+        ...state.run,
+        queue: newQueue,
+        currentQueueIndex: 0,
+        currentActionProgress: 0,
+        repeatLastAction: action.repeatLastAction,
+      };
       return { ...state, run };
     }
 

@@ -763,6 +763,44 @@ h1, h2, h3 {
   background: var(--accent);
 }
 
+/* Queue tabs */
+.queue-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.queue-tab {
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  transition: background 0.15s, color 0.15s;
+}
+
+.queue-tab:hover {
+  color: var(--text);
+}
+
+.queue-tab.active {
+  background: var(--bg-raised);
+  color: var(--text-bright);
+}
+
+/* Queue preview collapse indicator */
+.queue-preview-collapsed {
+  border-color: rgba(184, 92, 92, 0.4);
+}
+
+.queue-preview-collapsed .queue-preview-years {
+  color: var(--danger);
+}
+
 /* Queue bottom actions */
 .queue-actions-bar {
   display: flex;
