@@ -83,6 +83,7 @@ function QueueItem({
   isActive,
   progress,
   duration,
+  currentRepeat,
   isFirst,
   isLast,
   dispatch,
@@ -92,6 +93,7 @@ function QueueItem({
   isActive: boolean;
   progress: number;
   duration: number;
+  currentRepeat: number;
   isFirst: boolean;
   isLast: boolean;
   dispatch: React.Dispatch<GameAction>;
@@ -100,6 +102,10 @@ function QueueItem({
   if (!def) return null;
 
   const pct = isActive ? Math.min(100, (progress / duration) * 100) : 0;
+  const showRepeatProgress = isActive && entry.repeat > 1;
+  const repeatPct = showRepeatProgress
+    ? Math.min(100, ((currentRepeat - 1 + pct / 100) / entry.repeat) * 100)
+    : 0;
   return (
     <div className={`queue-item ${isActive ? "active" : ""}`}>
       {isActive && (
@@ -188,6 +194,26 @@ function QueueItem({
           </button>
         </div>
       </div>
+      {showRepeatProgress && (
+        <div className="queue-repeat-progress">
+          <div className="queue-repeat-progress-track">
+            <div
+              className="queue-repeat-progress-fill"
+              style={{ width: `${repeatPct}%` }}
+            />
+            {Array.from({ length: entry.repeat - 1 }, (_, i) => (
+              <div
+                key={i}
+                className="queue-repeat-progress-divider"
+                style={{ left: `${((i + 1) / entry.repeat) * 100}%` }}
+              />
+            ))}
+          </div>
+          <span className="queue-repeat-progress-label">
+            {currentRepeat} of {entry.repeat}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -356,40 +382,50 @@ export function QueuePanel({ state, totalRuns, dispatch }: QueuePanelProps) {
           </div>
         ) : (
           <div className="queue-list">
-            {queue.map((entry, i) => {
+            {(() => {
               // Determine which queue array index is currently active
               // currentQueueIndex is a logical position counting repeats
               let activeArrayIdx = -1;
+              let activeLogicalStart = 0;
               let logicalPos = 0;
               for (let j = 0; j < queue.length; j++) {
                 const reps = queue[j].repeat;
                 if (logicalPos + reps > run.currentQueueIndex) {
                   activeArrayIdx = j;
+                  activeLogicalStart = logicalPos;
                   break;
                 }
                 logicalPos += reps;
               }
               if (activeArrayIdx === -1 && run.repeatLastAction) {
                 activeArrayIdx = queue.length - 1;
+                // For repeat-last-action, compute how far past the queue we are
+                activeLogicalStart = logicalPos;
               }
 
-              const isActive =
-                run.status === "running" && i === activeArrayIdx;
-              const duration = getEffectiveDuration(entry.actionId);
-              return (
-                <QueueItem
-                  key={entry.uid}
-                  entry={entry}
-                  index={i}
-                  isActive={isActive}
-                  progress={isActive ? run.currentActionProgress : 0}
-                  duration={duration}
-                  isFirst={i === 0}
-                  isLast={i === queue.length - 1}
-                  dispatch={dispatch}
-                />
-              );
-            })}
+              // Current repeat iteration (1-indexed)
+              const currentRepeat = run.currentQueueIndex - activeLogicalStart + 1;
+
+              return queue.map((entry, i) => {
+                const isActive =
+                  run.status === "running" && i === activeArrayIdx;
+                const duration = getEffectiveDuration(entry.actionId);
+                return (
+                  <QueueItem
+                    key={entry.uid}
+                    entry={entry}
+                    index={i}
+                    isActive={isActive}
+                    progress={isActive ? run.currentActionProgress : 0}
+                    duration={duration}
+                    currentRepeat={isActive ? currentRepeat : 0}
+                    isFirst={i === 0}
+                    isLast={i === queue.length - 1}
+                    dispatch={dispatch}
+                  />
+                );
+              });
+            })()}
             <button
               className={`queue-repeat-toggle ${run.repeatLastAction ? "active" : ""}`}
               onClick={() => dispatch({ type: "toggle_repeat_last_action" })}
