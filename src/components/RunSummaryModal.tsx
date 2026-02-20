@@ -11,10 +11,10 @@ interface RunSummaryModalProps {
 }
 
 const SKILL_META: { id: SkillName; name: string; color: string }[] = [
-  { id: "farming", name: "Farming", color: "#5e7a53" },
-  { id: "building", name: "Building", color: "#867e74" },
-  { id: "research", name: "Research", color: "#527a8c" },
-  { id: "military", name: "Military", color: "#8b5555" },
+  { id: "farming", name: "Farming", color: "#6a8f5c" },
+  { id: "building", name: "Building", color: "#9a8a72" },
+  { id: "research", name: "Research", color: "#6a8faa" },
+  { id: "military", name: "Military", color: "#b07070" },
 ];
 
 export function RunSummaryModal({
