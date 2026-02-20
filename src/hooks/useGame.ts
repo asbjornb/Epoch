@@ -323,6 +323,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // Compute years remaining on the last action in progress
       let lastActionId: ActionId | undefined;
       let lastActionYearsRemaining: number | undefined;
+      let lastActionYearsDone: number | undefined;
       if (state.run.currentActionProgress > 0 && state.run.queue.length > 0) {
         // Find the queue entry that was in progress
         let arrayIdx = -1;
@@ -346,6 +347,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             const duration = getEffectiveDuration(def.baseDuration, skillLevel);
             lastActionId = activeEntry.actionId;
             lastActionYearsRemaining = duration - state.run.currentActionProgress;
+            lastActionYearsDone = state.run.currentActionProgress;
           }
         }
       }
@@ -363,7 +365,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         resources: { ...state.run.resources },
         totalFoodSpoiled: state.run.totalFoodSpoiled || 0,
         ...(Object.keys(skillsGained).length > 0 && { skillsGained }),
-        ...(lastActionId && lastActionYearsRemaining != null && { lastActionId, lastActionYearsRemaining }),
+        ...(lastActionId && lastActionYearsRemaining != null && { lastActionId, lastActionYearsRemaining, lastActionYearsDone }),
       };
       const runHistory = [historyEntry, ...state.runHistory].slice(0, 10);
       localStorage.setItem("epoch_run_history", JSON.stringify(runHistory));
