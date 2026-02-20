@@ -90,7 +90,10 @@ export function getEffectiveDuration(
     return Math.max(1, Math.ceil(skillDuration / population));
   }
   if (category === "research") {
-    return Math.max(1, Math.ceil(skillDuration / Math.pow(population, 0.8)));
+    // First 2 pop contribute linearly; additional pop has diminishing returns (pow 0.8)
+    // Normalized so 2 pop = baseDuration (the baseline the durations were tuned for)
+    const effectiveWorkers = Math.min(population, 2) + Math.pow(Math.max(0, population - 2), 0.8);
+    return Math.max(1, Math.ceil(skillDuration * 2 / effectiveWorkers));
   }
   // Resource and military: population doesn't affect duration
   return Math.max(1, Math.round(skillDuration));
