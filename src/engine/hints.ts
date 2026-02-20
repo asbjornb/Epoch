@@ -19,7 +19,7 @@ export function getSkillHint(state: GameState): string {
   }
 
   // Only farming unlocked — need to fill food storage
-  const basicUnlocks: ActionId[] = ["gather_materials", "train_militia", "research_tools"];
+  const basicUnlocks: ActionId[] = ["gather_wood", "train_militia", "research_tools"];
   const hasBasicUnlocks = basicUnlocks.every((id) => unlockedActions.includes(id));
 
   if (!hasBasicUnlocks) {
@@ -59,8 +59,8 @@ export function getSkillHint(state: GameState): string {
     return "Build up your defenses. Raiders will test your civilization at year 1500.";
   }
 
-  if (run.resources.techLevel < 3) {
-    return "Research more tools to boost all output by 10% per tech level.";
+  if (run.resources.researchedTechs.length < 3) {
+    return "Research more technologies to boost your civilization's output.";
   }
 
   return "Keep leveling your skills. Higher levels mean faster actions and greater output.";

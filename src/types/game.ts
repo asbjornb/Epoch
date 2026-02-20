@@ -12,7 +12,7 @@ export interface Resources {
   food: number;
   population: number;
   maxPopulation: number;
-  materials: number;
+  wood: number;
   militaryStrength: number;
   wallDefense: number;
   foodStorage: number;
@@ -30,7 +30,7 @@ export type ActionId =
   | "research_storage"
   | "research_fortification"
   | "research_tactics"
-  | "gather_materials"
+  | "gather_wood"
   | "scout"
   | "preserve_food";
 
@@ -42,7 +42,7 @@ export interface ActionDef {
   category: ActionCategory;
   baseDuration: number;
   unlockLevel: number;
-  materialCost?: number;
+  woodCost?: number;
 }
 
 export interface QueueEntry {

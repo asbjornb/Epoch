@@ -237,7 +237,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // When food cap is reached, unlock the other starting actions
       const { resources } = tickedState.run;
       if (resources.food >= resources.foodStorage) {
-        const startingUnlocks: ActionId[] = ["gather_materials", "train_militia", "research_tools"];
+        const startingUnlocks: ActionId[] = ["gather_wood", "train_militia", "research_tools"];
         const missing = startingUnlocks.filter(id => !tickedState.unlockedActions.includes(id));
         if (missing.length > 0) {
           const unlockedActions = [...tickedState.unlockedActions, ...missing];
@@ -249,7 +249,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           run.pendingEvents = [...run.pendingEvents, {
             eventId: "food_cap_unlock",
             title: "New Skills Discovered",
-            message: "Your food stores are full. Your people now have time to explore new pursuits: gathering materials, military training, and tool research.",
+            message: "Your food stores are full. Your people now have time to explore new pursuits: gathering wood, military training, and tool research.",
             type: "success" as const,
             year: run.year,
             firstTime,
