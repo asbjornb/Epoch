@@ -411,7 +411,7 @@ function applyActionPerTick(
       }
       break;
     case "gather_wood":
-      resources.wood += 1 * outputMult;
+      resources.wood += 0.5 * outputMult;
       break;
     case "train_militia":
       resources.militaryStrength += 0.2 * outputMult;
