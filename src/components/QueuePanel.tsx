@@ -11,7 +11,6 @@ import type { GameAction } from "../hooks/useGame.ts";
 
 interface QueuePanelProps {
   state: GameState;
-  totalRuns: number;
   dispatch: React.Dispatch<GameAction>;
 }
 
@@ -246,7 +245,7 @@ function QueuePreviewDisplay({
   );
 }
 
-export function QueuePanel({ state, totalRuns, dispatch }: QueuePanelProps) {
+export function QueuePanel({ state, dispatch }: QueuePanelProps) {
   const { run, skills } = state;
   const queue = run.queue;
 
@@ -286,7 +285,6 @@ export function QueuePanel({ state, totalRuns, dispatch }: QueuePanelProps) {
           </div>
         </div>
         <div className="queue-header-right">
-          <span className="run-counter">Run #{totalRuns + 1}</span>
           <label className="auto-restart-toggle" title="Automatically restart on collapse">
             <input
               type="checkbox"
