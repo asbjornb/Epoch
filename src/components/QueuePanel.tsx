@@ -6,7 +6,7 @@ import type {
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { isActionUnlocked, getSkillDurationMultiplier } from "../engine/skills.ts";
-import { simulateQueuePreview, createInitialResources } from "../engine/simulation.ts";
+import { simulateQueuePreview } from "../engine/simulation.ts";
 import type { GameAction } from "../hooks/useGame.ts";
 
 interface QueuePanelProps {
@@ -228,40 +228,23 @@ function QueuePreviewDisplay({
 
   if (queue.length === 0) return null;
 
-  const initial = createInitialResources();
   const r = preview.resources;
 
-  const items: { label: string; value: string; delta?: number }[] = [];
+  const items: { label: string; value: string }[] = [];
 
-  // Food
-  const foodDelta = Math.floor(r.food) - initial.food;
-  items.push({ label: "Food", value: `${Math.floor(r.food)}`, delta: foodDelta });
+  items.push({ label: "Food", value: `${Math.floor(r.food)}` });
+  items.push({ label: "Materials", value: `${Math.floor(r.materials)}` });
 
-  // Population
-  if (r.maxPopulation > initial.maxPopulation || r.population > initial.population) {
-    items.push({ label: "Pop", value: `${r.population}/${r.maxPopulation}` });
-  }
-
-  // Materials
-  if (Math.floor(r.materials) !== initial.materials) {
-    items.push({ label: "Materials", value: `${Math.floor(r.materials)}`, delta: Math.floor(r.materials) - initial.materials });
-  }
-
-  // Defense
   const totalDef = Math.floor(r.militaryStrength + r.wallDefense);
   if (totalDef > 0) {
     items.push({ label: "Defense", value: `${totalDef}` });
   }
 
-  // Tech
   if (r.techLevel > 0) {
     items.push({ label: "Tech", value: `Lv${r.techLevel} (+${r.techLevel * 10}%)` });
   }
 
-  // Food storage
-  if (r.foodStorage > initial.foodStorage) {
-    items.push({ label: "Storage", value: `${Math.floor(r.foodStorage)}`, delta: Math.floor(r.foodStorage) - initial.foodStorage });
-  }
+  items.push({ label: "Storage", value: `${Math.floor(r.foodStorage)}` });
 
   return (
     <div className="queue-preview">
@@ -269,7 +252,6 @@ function QueuePreviewDisplay({
         <span className="queue-preview-label">Projected outcome</span>
         <span className="queue-preview-years">
           {preview.yearsUsed.toLocaleString()} years
-          {preview.collapsed && <span className="queue-preview-collapse"> (collapses)</span>}
         </span>
       </div>
       <div className="queue-preview-items">
@@ -277,11 +259,6 @@ function QueuePreviewDisplay({
           <div key={item.label} className="queue-preview-item">
             <span className="queue-preview-item-label">{item.label}</span>
             <span className="queue-preview-item-value">{item.value}</span>
-            {item.delta !== undefined && item.delta !== 0 && (
-              <span className={`queue-preview-item-delta ${item.delta > 0 ? "positive" : "negative"}`}>
-                {item.delta > 0 ? "+" : ""}{item.delta}
-              </span>
-            )}
           </div>
         ))}
       </div>

@@ -764,11 +764,6 @@ h1, h2, h3 {
   font-variant-numeric: tabular-nums;
 }
 
-.queue-preview-collapse {
-  color: var(--danger);
-  font-weight: 500;
-}
-
 .queue-preview-items {
   display: flex;
   flex-wrap: wrap;
@@ -791,20 +786,6 @@ h1, h2, h3 {
   font-weight: 600;
   color: var(--text-bright);
   font-variant-numeric: tabular-nums;
-}
-
-.queue-preview-item-delta {
-  font-size: 0.68rem;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
-.queue-preview-item-delta.positive {
-  color: var(--success);
-}
-
-.queue-preview-item-delta.negative {
-  color: var(--danger);
 }
 
 /* Saved queues */
