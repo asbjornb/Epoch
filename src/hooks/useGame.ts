@@ -188,6 +188,43 @@ function createInitialState(): GameState {
   };
 }
 
+/** Compute how many times each queue entry actually completed during a run. */
+function computeQueueCompletions(
+  queue: QueueEntry[],
+  currentQueueIndex: number,
+  repeatLastAction: boolean,
+): number[] {
+  const completions: number[] = new Array(queue.length).fill(0);
+  if (queue.length === 0) return completions;
+
+  let logicalPos = 0;
+  for (let i = 0; i < queue.length; i++) {
+    const repeats = queue[i].repeat;
+
+    if (repeats === -1) {
+      // Infinite repeat: all remaining completions go to this entry
+      completions[i] = Math.max(0, currentQueueIndex - logicalPos);
+      return completions;
+    }
+
+    if (logicalPos + repeats > currentQueueIndex) {
+      // Partially completed entry — entries after this never started
+      completions[i] = Math.max(0, currentQueueIndex - logicalPos);
+      return completions;
+    }
+
+    completions[i] = repeats;
+    logicalPos += repeats;
+  }
+
+  // Queue fully exhausted — if repeatLastAction, extra completions go to last entry
+  if (repeatLastAction && currentQueueIndex > logicalPos) {
+    completions[queue.length - 1] += currentQueueIndex - logicalPos;
+  }
+
+  return completions;
+}
+
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "tick": {
@@ -265,12 +302,24 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       let outcome: RunHistoryEntry["outcome"] = "abandoned";
       if (state.run.status === "collapsed") outcome = "collapsed";
       else if (state.run.status === "victory") outcome = "victory";
+
+      // Compute actual completions per queue entry from currentQueueIndex
+      const queueCompletions = computeQueueCompletions(
+        state.run.queue,
+        state.run.currentQueueIndex,
+        state.run.repeatLastAction,
+      );
+
       const historyEntry: RunHistoryEntry = {
         runNumber: totalRuns,
         year: state.run.year,
         outcome,
         collapseReason: state.run.collapseReason,
-        queue: state.run.queue.map((e) => ({ actionId: e.actionId, repeat: e.repeat })),
+        queue: state.run.queue.map((e, i) => ({
+          actionId: e.actionId,
+          repeat: e.repeat,
+          completions: queueCompletions[i],
+        })),
         resources: { ...state.run.resources },
         totalFoodSpoiled: state.run.totalFoodSpoiled || 0,
       };

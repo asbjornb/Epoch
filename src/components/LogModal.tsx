@@ -100,16 +100,32 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
               <div className="run-history-queue">
                 {entry.queue.map((qe, j) => {
                   const def = getActionDef(qe.actionId);
+                  const completions = qe.completions ?? 0;
                   const repeatLabel =
                     qe.repeat === -1 ? "\u221E" : qe.repeat > 1 ? `\u00D7${qe.repeat}` : "";
+                  const completionLabel =
+                    completions > 1 || qe.repeat === -1
+                      ? `\u00D7${completions}`
+                      : "";
                   return (
                     <div key={j} className="run-history-action-row">
                       <span className="run-history-action-index">{j + 1}.</span>
                       <span className="run-history-action-name">
                         {def?.name ?? qe.actionId}
                       </span>
-                      {repeatLabel && (
-                        <span className="run-history-action-repeat">{repeatLabel}</span>
+                      {completionLabel ? (
+                        <span className="run-history-action-repeat">
+                          {completionLabel}
+                          {repeatLabel && completionLabel !== repeatLabel && (
+                            <span className="run-history-action-repeat-config">
+                              {" "}({repeatLabel})
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        repeatLabel && (
+                          <span className="run-history-action-repeat">{repeatLabel}</span>
+                        )
                       )}
                     </div>
                   );

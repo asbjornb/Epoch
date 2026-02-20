@@ -87,6 +87,7 @@ export interface DisasterInfo {
 export interface RunHistoryQueueEntry {
   actionId: ActionId;
   repeat: number;
+  completions: number;
 }
 
 export interface RunHistoryEntry {

@@ -1903,6 +1903,10 @@ h1, h2, h3 {
   margin-left: auto;
 }
 
+.run-history-action-repeat-config {
+  opacity: 0.5;
+}
+
 .run-history-stat-warn {
   border-color: rgba(184, 152, 72, 0.3);
   background: rgba(184, 152, 72, 0.08);
