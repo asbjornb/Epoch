@@ -88,7 +88,7 @@ function getCurrentQueueEntry(run: RunState): { entry: QueueEntry; index: number
   for (let i = 0; i < run.queue.length; i++) {
     const entry = run.queue[i];
     const repeats = entry.repeat;
-    if (logicalPos + repeats > run.currentQueueIndex) {
+    if (repeats === -1 || logicalPos + repeats > run.currentQueueIndex) {
       queueIdx = i;
       break;
     }
@@ -464,7 +464,7 @@ export function simulateQueuePreview(
     let logicalPos = 0;
     for (let i = 0; i < queue.length; i++) {
       const reps = queue[i].repeat;
-      if (logicalPos + reps > queueLogicalIndex) {
+      if (reps === -1 || logicalPos + reps > queueLogicalIndex) {
         arrayIdx = i;
         break;
       }

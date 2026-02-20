@@ -291,14 +291,17 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
     );
   };
 
-  const totalYears = queue.reduce(
-    (sum, e) => {
-      const dur = getEffectiveDuration(e.actionId);
-      const reps = e.repeat;
-      return sum + dur * reps;
-    },
-    0,
-  );
+  const hasInfiniteRepeat = queue.some((e) => e.repeat === -1);
+  const totalYears = hasInfiniteRepeat
+    ? null
+    : queue.reduce(
+        (sum, e) => {
+          const dur = getEffectiveDuration(e.actionId);
+          const reps = e.repeat;
+          return sum + dur * reps;
+        },
+        0,
+      );
 
   return (
     <div className="queue-panel">
@@ -307,7 +310,9 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
           <h2>Queue</h2>
           <div className="queue-meta">
             <span className="queue-count">{queue.length} actions</span>
-            <span className="queue-total-years">~{totalYears} years</span>
+            {totalYears !== null && (
+              <span className="queue-total-years">~{totalYears} years</span>
+            )}
           </div>
         </div>
         <div className="queue-header-right">
