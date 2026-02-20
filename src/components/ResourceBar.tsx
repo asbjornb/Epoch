@@ -63,15 +63,19 @@ export function ResourceBar({ resources, year, maxYear, encounteredDisasters }: 
         {resources.wood > 0 && (
           <ResourceItem label="Wood" value={Math.floor(resources.wood)} icon="🪵" color="#9a8a72" />
         )}
-        {resources.militaryStrength + resources.wallDefense > 0 && (
-          <ResourceItem
-            label="Defense"
-            value={Math.floor(resources.militaryStrength + resources.wallDefense)}
-            icon="⚔"
-            color="#b07070"
-            extra={resources.wallDefense > 0 ? `(${Math.floor(resources.militaryStrength)}+${Math.floor(resources.wallDefense)})` : undefined}
-          />
-        )}
+        {resources.militaryStrength + resources.wallDefense > 0 && (() => {
+          const tacticsMult = resources.researchedTechs.includes("research_tactics") ? 1.15 : 1.0;
+          const effectiveMilitary = resources.militaryStrength * tacticsMult;
+          return (
+            <ResourceItem
+              label="Defense"
+              value={Math.floor(effectiveMilitary + resources.wallDefense)}
+              icon="⚔"
+              color="#b07070"
+              extra={resources.wallDefense > 0 ? `(${Math.floor(effectiveMilitary)}+${Math.floor(resources.wallDefense)})` : undefined}
+            />
+          );
+        })()}
         {resources.researchedTechs.length > 0 && (
           <ResourceItem
             label="Tech"

@@ -79,7 +79,7 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
             <div className="run-history-section-label">Resources</div>
             <div className="run-history-stats">
               <Stat label="Pop" value={`${r.population}/${r.maxPopulation}`} />
-              <Stat label="Defense" value={`${Math.floor(r.militaryStrength)}+${Math.floor(r.wallDefense)}w`} />
+              <Stat label="Defense" value={`${Math.floor(r.militaryStrength * (r.researchedTechs?.includes("research_tactics") ? 1.15 : 1))}+${Math.floor(r.wallDefense)}w`} />
               <Stat label="Tech" value={r.researchedTechs?.length ?? 0} />
             </div>
           </div>

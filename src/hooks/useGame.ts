@@ -75,13 +75,16 @@ function loadUnlockedActions(): ActionId[] {
   return [...DEFAULT_UNLOCKED_ACTIONS];
 }
 
-/** Check if any new actions should be unlocked based on current skills */
-function computeSkillUnlocks(current: ActionId[], skills: GameState["skills"]): ActionId[] {
+/** Check if any new actions should be unlocked based on current skills and researched techs */
+function computeSkillUnlocks(current: ActionId[], skills: GameState["skills"], researchedTechs?: ActionId[]): ActionId[] {
   let updated = current;
   for (const def of ACTION_DEFS) {
-    if (!updated.includes(def.id) && isActionUnlocked(skills, def.skill, def.unlockLevel)) {
-      // Only auto-unlock skill-gated actions (unlockLevel > 0) when skill level is met
-      if (def.unlockLevel > 0) {
+    if (!updated.includes(def.id)) {
+      const skillName = def.unlockSkill ?? def.skill;
+      const skillMet = isActionUnlocked(skills, skillName, def.unlockLevel);
+      const techMet = !def.requiredTech || (researchedTechs?.includes(def.requiredTech) ?? false);
+      // Auto-unlock when gated by skill level or required tech
+      if (skillMet && techMet && (def.unlockLevel > 0 || def.requiredTech)) {
         updated = updated === current ? [...current] : updated;
         updated.push(def.id);
       }
@@ -282,7 +285,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       // Check if skills unlocked new actions
-      const newUnlocks = computeSkillUnlocks(tickedState.unlockedActions, tickedState.skills);
+      const newUnlocks = computeSkillUnlocks(tickedState.unlockedActions, tickedState.skills, tickedState.run.resources.researchedTechs);
       if (newUnlocks !== tickedState.unlockedActions) {
         localStorage.setItem("epoch_unlocked_actions", JSON.stringify(newUnlocks));
         return { ...tickedState, unlockedActions: newUnlocks };

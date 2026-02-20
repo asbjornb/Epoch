@@ -38,14 +38,15 @@ export function getSkillHint(state: GameState): string {
     const ranked = lockedActions
       .map((a) => ({
         action: a,
-        gap: a.unlockLevel - skills[a.skill].level,
+        gap: a.unlockLevel - skills[a.unlockSkill ?? a.skill].level,
       }))
       .filter((r) => r.gap > 0)
       .sort((a, b) => a.gap - b.gap);
 
     if (ranked.length > 0) {
       const best = ranked[0];
-      const skillName = best.action.skill.charAt(0).toUpperCase() + best.action.skill.slice(1);
+      const unlockSkill = best.action.unlockSkill ?? best.action.skill;
+      const skillName = unlockSkill.charAt(0).toUpperCase() + unlockSkill.slice(1);
       if (best.gap === 1) {
         return `Almost there! One more ${skillName} level will unlock ${best.action.name}.`;
       }

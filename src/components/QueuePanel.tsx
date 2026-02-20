@@ -48,7 +48,7 @@ export function ActionPalette({
   const visible = ACTION_DEFS.filter(
     (a) =>
       state.unlockedActions.includes(a.id) &&
-      isActionUnlocked(state.skills, a.skill, a.unlockLevel),
+      isActionUnlocked(state.skills, a.unlockSkill ?? a.skill, a.unlockLevel),
   );
 
   const queuedIds = (currentQueue ?? state.run.queue).map((e) => e.actionId);
@@ -269,7 +269,8 @@ function QueuePreviewDisplay({
   }
   items.push({ label: "Wood", value: `${Math.floor(r.wood)}` });
 
-  const totalDef = Math.floor(r.militaryStrength + r.wallDefense);
+  const tacticsMult = r.researchedTechs.includes("research_tactics") ? 1.15 : 1.0;
+  const totalDef = Math.floor(r.militaryStrength * tacticsMult + r.wallDefense);
   if (totalDef > 0) {
     items.push({ label: "Defense", value: `${totalDef}` });
   }
