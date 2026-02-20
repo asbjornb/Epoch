@@ -1916,6 +1916,33 @@ h1, h2, h3 {
   color: #c4a84a;
 }
 
+.run-history-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.run-history-skill-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  background: rgba(106, 168, 106, 0.08);
+  border: 1px solid rgba(106, 168, 106, 0.2);
+  border-radius: 5px;
+}
+
+.run-history-skill-name {
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.run-history-skill-gain {
+  color: var(--success);
+  font-weight: 600;
+}
+
 /* ===== Statistics Panel ===== */
 .stats-panel {
   display: flex;

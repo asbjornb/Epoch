@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import type { LogEntry, RunHistoryEntry } from "../types/game.ts";
+import type { LogEntry, RunHistoryEntry, SkillName } from "../types/game.ts";
 import { getActionDef } from "../types/actions.ts";
 
 interface LogModalProps {
@@ -92,47 +92,55 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
             </div>
           )}
 
-          <div className="run-history-section">
-            <div className="run-history-section-label">Queue</div>
-            {entry.queue.length === 0 ? (
-              <div className="run-history-queue-empty">No actions queued</div>
-            ) : (
-              <div className="run-history-queue">
-                {entry.queue.map((qe, j) => {
-                  const def = getActionDef(qe.actionId);
-                  const completions = qe.completions ?? 0;
-                  const repeatLabel =
-                    qe.repeat === -1 ? "\u221E" : qe.repeat > 1 ? `\u00D7${qe.repeat}` : "";
-                  const completionLabel =
-                    completions > 1 || qe.repeat === -1
-                      ? `\u00D7${completions}`
-                      : "";
-                  return (
-                    <div key={j} className="run-history-action-row">
-                      <span className="run-history-action-index">{j + 1}.</span>
-                      <span className="run-history-action-name">
-                        {def?.name ?? qe.actionId}
-                      </span>
-                      {completionLabel ? (
-                        <span className="run-history-action-repeat">
-                          {completionLabel}
-                          {repeatLabel && completionLabel !== repeatLabel && (
-                            <span className="run-history-action-repeat-config">
-                              {" "}({repeatLabel})
+          {(() => {
+            const performed = entry.queue.filter((qe) => (qe.completions ?? 0) > 0);
+            return (
+              <div className="run-history-section">
+                <div className="run-history-section-label">Actions</div>
+                {performed.length === 0 ? (
+                  <div className="run-history-queue-empty">No actions completed</div>
+                ) : (
+                  <div className="run-history-queue">
+                    {performed.map((qe, j) => {
+                      const def = getActionDef(qe.actionId);
+                      const completions = qe.completions ?? 0;
+                      const completionLabel =
+                        completions > 1 ? `\u00D7${completions}` : "";
+                      return (
+                        <div key={j} className="run-history-action-row">
+                          <span className="run-history-action-index">{j + 1}.</span>
+                          <span className="run-history-action-name">
+                            {def?.name ?? qe.actionId}
+                          </span>
+                          {completionLabel && (
+                            <span className="run-history-action-repeat">
+                              {completionLabel}
                             </span>
                           )}
-                        </span>
-                      ) : (
-                        repeatLabel && (
-                          <span className="run-history-action-repeat">{repeatLabel}</span>
-                        )
-                      )}
-                    </div>
-                  );
-                })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()}
+
+          {entry.skillsGained && Object.keys(entry.skillsGained).length > 0 && (
+            <div className="run-history-section">
+              <div className="run-history-section-label">Skills Gained</div>
+              <div className="run-history-skills">
+                {(Object.entries(entry.skillsGained) as [SkillName, number][]).map(
+                  ([skill, levels]) => (
+                    <div key={skill} className="run-history-skill-row">
+                      <span className="run-history-skill-name">{skill}</span>
+                      <span className="run-history-skill-gain">+{levels}</span>
+                    </div>
+                  ),
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
