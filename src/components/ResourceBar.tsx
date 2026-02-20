@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import type { Resources, DisasterInfo } from "../types/game.ts";
-import { DISASTERS } from "../engine/simulation.ts";
+import { DISASTERS, getTotalDefense } from "../engine/simulation.ts";
 
 interface ResourceBarProps {
   resources: Resources;
@@ -63,16 +63,17 @@ export function ResourceBar({ resources, year, maxYear, encounteredDisasters }: 
         {resources.wood > 0 && (
           <ResourceItem label="Wood" value={Math.floor(resources.wood)} icon="🪵" color="#9a8a72" />
         )}
-        {resources.militaryStrength + resources.wallDefense > 0 && (() => {
-          const tacticsMult = resources.researchedTechs.includes("research_tactics") ? 1.15 : 1.0;
-          const effectiveMilitary = resources.militaryStrength * tacticsMult;
+        {resources.militaryStrength > 0 && (() => {
+          const totalDef = getTotalDefense(resources);
+          const baseMil = Math.floor(resources.militaryStrength);
+          const hasMultipliers = resources.wallsBuilt > 0 || resources.researchedTechs.includes("research_tactics") || resources.researchedTechs.includes("research_fortification");
           return (
             <ResourceItem
               label="Defense"
-              value={Math.floor(effectiveMilitary + resources.wallDefense)}
+              value={Math.floor(totalDef)}
               icon="⚔"
               color="#b07070"
-              extra={resources.wallDefense > 0 ? `(${Math.floor(effectiveMilitary)}+${Math.floor(resources.wallDefense)})` : undefined}
+              extra={hasMultipliers ? `(${baseMil} base)` : undefined}
             />
           );
         })()}

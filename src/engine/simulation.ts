@@ -54,7 +54,7 @@ export function createInitialResources(): Resources {
     maxPopulation: INITIAL_MAX_POP,
     wood: 0,
     militaryStrength: 0,
-    wallDefense: 0,
+    wallsBuilt: 0,
     foodStorage: INITIAL_FOOD_STORAGE,
     granariesBuilt: 0,
     researchedTechs: [],
@@ -111,6 +111,24 @@ function getTechMultiplierForAction(researchedTechs: string[], actionId: string)
 /** Military strength multiplier from tactics research */
 function getMilitaryStrengthMultiplier(researchedTechs: string[]): number {
   return researchedTechs.includes("research_tactics") ? 1.15 : 1.0;
+}
+
+/** Wall defense multiplier: each wall gives +15%, stacking multiplicatively */
+function getWallDefenseMultiplier(wallsBuilt: number): number {
+  return Math.pow(1.15, wallsBuilt);
+}
+
+/** Fortification defense multiplier: +20% total defense when researched */
+function getFortificationMultiplier(researchedTechs: string[]): number {
+  return researchedTechs.includes("research_fortification") ? 1.20 : 1.0;
+}
+
+/** Calculate total defense from all sources */
+export function getTotalDefense(resources: Resources): number {
+  const tacticsMult = getMilitaryStrengthMultiplier(resources.researchedTechs);
+  const wallMult = getWallDefenseMultiplier(resources.wallsBuilt);
+  const fortMult = getFortificationMultiplier(resources.researchedTechs);
+  return resources.militaryStrength * tacticsMult * wallMult * fortMult;
 }
 
 /** Check if an action is a research tech (single-use) */
@@ -282,13 +300,14 @@ export function tick(state: GameState): GameState {
     }
   }
 
-  // Raider event - wall defense counts toward total defense
+  // Raider event - walls and fortification multiply total defense
   if (run.year === RAIDER_YEAR) {
-    const effectiveMilitary = resources.militaryStrength * getMilitaryStrengthMultiplier(resources.researchedTechs);
-    const totalDefense = effectiveMilitary + resources.wallDefense;
+    const totalDefense = getTotalDefense(resources);
+    const baseMilitary = Math.floor(resources.militaryStrength);
+    const totalMult = (getMilitaryStrengthMultiplier(resources.researchedTechs) * getWallDefenseMultiplier(resources.wallsBuilt) * getFortificationMultiplier(resources.researchedTechs));
     if (totalDefense < RAIDER_STRENGTH_REQUIRED) {
       run.status = "collapsed";
-      const defenseDetail = `Total defense ${Math.floor(totalDefense)} (military ${Math.floor(effectiveMilitary)} + walls ${Math.floor(resources.wallDefense)})`;
+      const defenseDetail = `Total defense ${Math.floor(totalDefense)} (${baseMilitary} base × ${totalMult.toFixed(2)})`;
       const hasSeenDefense = state.seenEventTypes.includes("raider_survived");
       run.collapseReason = hasSeenDefense
         ? `Raiders attacked at year ${RAIDER_YEAR}. ${defenseDetail} < ${RAIDER_STRENGTH_REQUIRED} required.`
@@ -449,8 +468,8 @@ function applyActionCompletion(
       break;
     }
     case "build_wall":
-      resources.wallDefense += Math.floor(8 * outputMult);
-      log.push({ year, message: `Wall built. Wall defense now ${Math.floor(resources.wallDefense)}.`, type: "info" });
+      resources.wallsBuilt += 1;
+      log.push({ year, message: `Wall built (${resources.wallsBuilt} total). Defense ×${getWallDefenseMultiplier(resources.wallsBuilt).toFixed(2)}.`, type: "info" });
       break;
     case "research_tools":
       if (!resources.researchedTechs.includes("research_tools")) {
@@ -475,8 +494,7 @@ function applyActionCompletion(
       if (!resources.researchedTechs.includes("research_fortification")) {
         resources.researchedTechs = [...resources.researchedTechs, "research_fortification"];
       }
-      resources.wallDefense += 20;
-      log.push({ year, message: `Fortification researched. Wall defense +20 (now ${Math.floor(resources.wallDefense)}).`, type: "info" });
+      log.push({ year, message: `Fortification researched. Total defense ×1.20.`, type: "info" });
       break;
     case "research_tactics":
       if (!resources.researchedTechs.includes("research_tactics")) {
@@ -514,7 +532,7 @@ function applyCompletionPreview(
       break;
     }
     case "build_wall":
-      resources.wallDefense += Math.floor(8 * outputMult);
+      resources.wallsBuilt += 1;
       break;
     case "research_tools":
       if (!resources.researchedTechs.includes("research_tools")) {
@@ -536,7 +554,6 @@ function applyCompletionPreview(
       if (!resources.researchedTechs.includes("research_fortification")) {
         resources.researchedTechs = [...resources.researchedTechs, "research_fortification"];
       }
-      resources.wallDefense += 20;
       break;
     case "research_tactics":
       if (!resources.researchedTechs.includes("research_tactics")) {

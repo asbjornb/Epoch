@@ -1,5 +1,6 @@
 import type { GameState, ActionId } from "../types/game.ts";
 import { ACTION_DEFS } from "../types/actions.ts";
+import { getTotalDefense } from "./simulation.ts";
 
 export function getSkillHint(state: GameState): string {
   const { skills, unlockedActions, run } = state;
@@ -55,7 +56,7 @@ export function getSkillHint(state: GameState): string {
   }
 
   // All actions unlocked — give general progression tips
-  const totalDefense = run.resources.militaryStrength + run.resources.wallDefense;
+  const totalDefense = getTotalDefense(run.resources);
   if (state.encounteredDisasters.length === 0 && totalDefense < 250) {
     return "Build up your defenses. Raiders will test your civilization at year 1500.";
   }
