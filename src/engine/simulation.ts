@@ -58,6 +58,7 @@ export function createInitialRun(): RunState {
     repeatLastAction: true,
     pendingEvents: [],
     pausedByEvent: false,
+    totalFoodSpoiled: 0,
   };
 }
 
@@ -144,6 +145,15 @@ export function tick(state: GameState): GameState {
     const excess = resources.food - resources.foodStorage;
     const spoiled = Math.ceil(excess * SPOILAGE_RATE);
     resources.food -= spoiled;
+    run.totalFoodSpoiled = (run.totalFoodSpoiled || 0) + spoiled;
+    // Log spoilage periodically (every 500 years)
+    if (run.year % 500 === 0 && spoiled > 0) {
+      log.push({
+        year: run.year,
+        message: `Food spoiling — ${Math.floor(spoiled)}/yr excess lost. Total spoiled: ${Math.floor(run.totalFoodSpoiled)}.`,
+        type: "warning",
+      });
+    }
   }
 
   // Population growth (not during winter, respects housing cap)
