@@ -357,7 +357,24 @@ export function QueuePanel({
     onDraftQueueChange(draftQueue.filter((e) => e.uid !== uid));
 
   const applyDraft = () => {
+    const status = run.status;
+
+    // Collapse the current run if it's active
+    if (status === "running" || status === "paused") {
+      dispatch({ type: "force_collapse", reason: "Restarted with new queue." });
+    }
+
+    // Reset to save history and create a fresh run (skip if never started)
+    if (status !== "idle") {
+      dispatch({ type: "reset_run" });
+    }
+
+    // Load the draft queue into the new run
     dispatch({ type: "queue_load", queue: draftQueue, repeatLastAction: draftRepeatLast });
+
+    // Start the new run
+    dispatch({ type: "start_run" });
+
     onDraftModeChange(false);
   };
 
