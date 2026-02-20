@@ -6,7 +6,7 @@ import type {
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { isActionUnlocked } from "../engine/skills.ts";
-import { simulateQueuePreview, getEffectiveDuration } from "../engine/simulation.ts";
+import { simulateQueuePreview, getEffectiveDuration, getTotalDefense } from "../engine/simulation.ts";
 import type { GameAction } from "../hooks/useGame.ts";
 import { HintButton } from "./HintButton.tsx";
 
@@ -269,8 +269,7 @@ function QueuePreviewDisplay({
   }
   items.push({ label: "Wood", value: `${Math.floor(r.wood)}` });
 
-  const tacticsMult = r.researchedTechs.includes("research_tactics") ? 1.15 : 1.0;
-  const totalDef = Math.floor(r.militaryStrength * tacticsMult + r.wallDefense);
+  const totalDef = Math.floor(getTotalDefense(r));
   if (totalDef > 0) {
     items.push({ label: "Defense", value: `${totalDef}` });
   }

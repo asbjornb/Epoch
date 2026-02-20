@@ -42,7 +42,7 @@ export const ACTION_DEFS: ActionDef[] = [
   {
     id: "build_wall",
     name: "Build Wall",
-    description: "Fortify defenses. Adds wall defense against raiders. Costs 30 wood.",
+    description: "Fortify defenses. Each wall ×1.15 total defense. Costs 30 wood.",
     skill: "building",
     category: "building",
     baseDuration: 160,
@@ -89,7 +89,7 @@ export const ACTION_DEFS: ActionDef[] = [
   {
     id: "research_fortification",
     name: "Fortification",
-    description: "Defensive engineering. +20 wall defense.",
+    description: "Defensive engineering. ×1.20 total defense.",
     skill: "research",
     category: "research",
     baseDuration: 200,
