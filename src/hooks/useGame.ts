@@ -141,6 +141,17 @@ function cloneSkills(skills: GameState["skills"]): GameState["skills"] {
 
 const SAVE_KEY = "epoch_save";
 
+/** Holds raw JSON of an incompatible save so the user can export it before it's lost. */
+let incompatibleSaveJson: string | null = null;
+
+export function getIncompatibleSave(): string | null {
+  return incompatibleSaveJson;
+}
+
+export function clearIncompatibleSave(): void {
+  incompatibleSaveJson = null;
+}
+
 function saveGameState(state: GameState): void {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
@@ -152,12 +163,13 @@ export function loadGameState(): GameState | null {
     const saved = localStorage.getItem(SAVE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Validate that the save has the current schema — discard incompatible saves
+      // Validate that the save has the current schema — stash incompatible saves for user export
       if (
         !parsed?.run?.resources ||
         !Array.isArray(parsed.run.resources.researchedTechs) ||
         typeof parsed.run.resources.wood !== "number"
       ) {
+        incompatibleSaveJson = saved;
         localStorage.removeItem(SAVE_KEY);
         return null;
       }

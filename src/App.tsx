@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useGame, makeUid } from "./hooks/useGame.ts";
+import { useGame, makeUid, getIncompatibleSave, clearIncompatibleSave } from "./hooks/useGame.ts";
 import { useWakeLock } from "./hooks/useWakeLock.ts";
 import { QueuePanel, ActionPalette } from "./components/QueuePanel.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
@@ -8,6 +8,7 @@ import { EventModal } from "./components/EventModal.tsx";
 import { RunSummaryModal } from "./components/RunSummaryModal.tsx";
 import { LogModal } from "./components/LogModal.tsx";
 import { SettingsPanel } from "./components/SettingsPanel.tsx";
+import { IncompatibleSaveModal } from "./components/IncompatibleSaveModal.tsx";
 import { getActionDef } from "./types/actions.ts";
 import type { ActionId, QueueEntry } from "./types/game.ts";
 
@@ -19,6 +20,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [summaryDismissedAtRun, setSummaryDismissedAtRun] = useState(-1);
+  const [incompatibleSave, setIncompatibleSave] = useState<string | null>(getIncompatibleSave);
 
   // Draft queue state
   const [draftMode, setDraftMode] = useState(false);
@@ -188,6 +190,17 @@ function App() {
           dispatch={dispatch}
           onClose={() => setSettingsOpen(false)}
           wakeLock={wakeLock}
+        />
+      )}
+
+      {/* Incompatible save modal */}
+      {incompatibleSave && (
+        <IncompatibleSaveModal
+          saveJson={incompatibleSave}
+          onDismiss={() => {
+            clearIncompatibleSave();
+            setIncompatibleSave(null);
+          }}
         />
       )}
     </div>
