@@ -8,7 +8,7 @@ import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { isActionUnlocked } from "../engine/skills.ts";
 import { simulateQueuePreview, getEffectiveDuration, getTotalDefense } from "../engine/simulation.ts";
 import type { GameAction } from "../hooks/useGame.ts";
-import { HintButton } from "./HintButton.tsx";
+
 
 interface QueuePanelProps {
   state: GameState;
@@ -57,7 +57,6 @@ export function ActionPalette({
     <div className="action-palette">
       <div className="palette-label">
         <span className="palette-label-text">Actions</span>
-        <HintButton state={state} />
       </div>
       <div className="palette-grid">
         {visible.map((a) => {
