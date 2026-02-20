@@ -56,6 +56,7 @@ export function createInitialResources(): Resources {
     militaryStrength: 0,
     wallDefense: 0,
     foodStorage: INITIAL_FOOD_STORAGE,
+    granariesBuilt: 0,
     researchedTechs: [],
   };
 }
@@ -437,10 +438,13 @@ function applyActionCompletion(
       resources.maxPopulation += 3;
       log.push({ year, message: `Hut built. Population capacity now ${resources.maxPopulation}.`, type: "info" });
       break;
-    case "build_granary":
-      resources.foodStorage += Math.floor(150 * outputMult);
-      log.push({ year, message: `Granary built. Food storage now ${Math.floor(resources.foodStorage)}.`, type: "info" });
+    case "build_granary": {
+      const bonus = Math.floor(150 * outputMult / Math.sqrt(1 + resources.granariesBuilt));
+      resources.foodStorage += bonus;
+      resources.granariesBuilt++;
+      log.push({ year, message: `Granary built (+${bonus} storage). Food storage now ${Math.floor(resources.foodStorage)}.`, type: "info" });
       break;
+    }
     case "build_wall":
       resources.wallDefense += Math.floor(8 * outputMult);
       log.push({ year, message: `Wall built. Wall defense now ${Math.floor(resources.wallDefense)}.`, type: "info" });
@@ -500,9 +504,12 @@ function applyCompletionPreview(
     case "build_hut":
       resources.maxPopulation += 3;
       break;
-    case "build_granary":
-      resources.foodStorage += Math.floor(150 * outputMult);
+    case "build_granary": {
+      const bonus = Math.floor(150 * outputMult / Math.sqrt(1 + resources.granariesBuilt));
+      resources.foodStorage += bonus;
+      resources.granariesBuilt++;
       break;
+    }
     case "build_wall":
       resources.wallDefense += Math.floor(8 * outputMult);
       break;
