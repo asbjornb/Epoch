@@ -28,7 +28,7 @@ const SKILL_ICONS: Record<string, string> = {
   military: "\u{2694}",
 };
 
-function ActionPalette({
+export function ActionPalette({
   state,
   dispatch,
 }: {
@@ -368,14 +368,12 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
         </div>
       )}
 
-      <ActionPalette state={state} dispatch={dispatch} />
-
       <div className="queue-list-container">
         {queue.length === 0 ? (
           <div className="queue-empty">
             <p>No actions queued.</p>
             <p className="queue-empty-hint">
-              Click an action above to add it to the queue.
+              Select an action to add it to the queue.
             </p>
           </div>
         ) : (
