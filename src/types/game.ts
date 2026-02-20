@@ -50,6 +50,8 @@ export interface ActionDef {
   unlockSkill?: SkillName;
   /** Tech that must be researched before this action unlocks */
   requiredTech?: ActionId;
+  /** Minimum walls built before this action unlocks */
+  requiredWalls?: number;
 }
 
 export interface QueueEntry {
