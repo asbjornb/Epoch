@@ -20,7 +20,6 @@ function App() {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
-  const [summaryDismissedAtRun, setSummaryDismissedAtRun] = useState(-1);
   const [incompatibleSave, setIncompatibleSave] = useState<string | null>(getIncompatibleSave);
 
   // Draft queue state
@@ -45,9 +44,6 @@ function App() {
     }
   }, [draftMode, dispatch]);
 
-  const isEnded = state.run.status === "collapsed" || state.run.status === "victory";
-  const showRunSummary = isEnded && state.totalRuns !== summaryDismissedAtRun;
-
   const pendingEvent = state.run.pendingEvents[0] ?? null;
 
   const handleDismissEvent = useCallback(() => {
@@ -59,8 +55,8 @@ function App() {
   }, [dispatch]);
 
   const handleDismissRunSummary = useCallback(() => {
-    setSummaryDismissedAtRun(state.totalRuns);
-  }, [state.totalRuns]);
+    dispatch({ type: "dismiss_summary" });
+  }, [dispatch]);
 
   return (
     <div className="app">
@@ -153,14 +149,14 @@ function App() {
       )}
 
       {/* Run summary modal (collapse/victory) */}
-      {showRunSummary && (state.run.status === "collapsed" || state.run.status === "victory") && (
+      {state.endedRunSnapshot && (
         <RunSummaryModal
-          run={state.run}
-          skills={state.skills}
-          skillsAtRunStart={state.skillsAtRunStart}
-          lastRunYear={state.lastRunYear}
-          totalRuns={state.totalRuns + 1}
-          autoRestarting={state.run.status === "collapsed" && state.run.autoRestart}
+          run={state.endedRunSnapshot.run}
+          skills={state.endedRunSnapshot.skills}
+          skillsAtRunStart={state.endedRunSnapshot.skillsAtRunStart}
+          lastRunYear={state.endedRunSnapshot.lastRunYear}
+          totalRuns={state.endedRunSnapshot.totalRuns}
+          autoRestarting={state.endedRunSnapshot.run.status === "collapsed" && state.endedRunSnapshot.run.autoRestart}
           onDismiss={handleDismissRunSummary}
         />
       )}

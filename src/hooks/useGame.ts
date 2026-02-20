@@ -29,6 +29,7 @@ export type GameAction =
   | { type: "force_collapse"; reason?: string }
   | { type: "import_save"; state: GameState }
   | { type: "hard_reset" }
+  | { type: "dismiss_summary" }
   | { type: "reset_auto_dismiss"; eventId: string }
   | { type: "reset_all_auto_dismiss" };
 
@@ -200,6 +201,8 @@ export function validateSave(json: string): GameState | null {
       typeof parsed.totalRuns === "number" &&
       Array.isArray(parsed.unlockedActions)
     ) {
+      // Ensure new fields exist for saves from older versions
+      if (parsed.endedRunSnapshot === undefined) parsed.endedRunSnapshot = null;
       return parsed as GameState;
     }
   } catch { /* ignore */ }
@@ -231,6 +234,7 @@ function createInitialState(): GameState {
     lastRunYear: loadLastRunYear(),
     skillsAtRunStart: cloneSkills(skills),
     runHistory: loadRunHistory(),
+    endedRunSnapshot: null,
   };
 }
 
@@ -314,7 +318,22 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const newUnlocks = computeSkillUnlocks(tickedState.unlockedActions, tickedState.skills, tickedState.run.resources.researchedTechs, tickedState.run.resources.wallsBuilt);
       if (newUnlocks !== tickedState.unlockedActions) {
         localStorage.setItem("epoch_unlocked_actions", JSON.stringify(newUnlocks));
-        return { ...tickedState, unlockedActions: newUnlocks };
+        tickedState = { ...tickedState, unlockedActions: newUnlocks };
+      }
+
+      // Snapshot state when a run ends so the summary modal persists through auto-restart
+      const ended = tickedState.run.status === "collapsed" || tickedState.run.status === "victory";
+      if (ended && state.run.status !== "collapsed" && state.run.status !== "victory") {
+        tickedState = {
+          ...tickedState,
+          endedRunSnapshot: {
+            run: tickedState.run,
+            skills: tickedState.skills,
+            skillsAtRunStart: tickedState.skillsAtRunStart,
+            lastRunYear: tickedState.lastRunYear,
+            totalRuns: tickedState.totalRuns + 1,
+          },
+        };
       }
       return tickedState;
     }
@@ -565,7 +584,17 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         status: "collapsed" as const,
         collapseReason: action.reason ?? "You abandoned your civilization.",
       };
-      return { ...state, run };
+      const newState = { ...state, run };
+      return {
+        ...newState,
+        endedRunSnapshot: {
+          run,
+          skills: newState.skills,
+          skillsAtRunStart: newState.skillsAtRunStart,
+          lastRunYear: newState.lastRunYear,
+          totalRuns: newState.totalRuns + 1,
+        },
+      };
     }
 
     case "import_save": {
@@ -574,6 +603,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       if (imported.run.status === "running") {
         imported.run.status = "paused";
       }
+      if (imported.endedRunSnapshot === undefined) imported.endedRunSnapshot = null;
       return imported;
     }
 
@@ -601,8 +631,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         lastRunYear: 0,
         skillsAtRunStart: cloneSkills(skills),
         runHistory: [],
+        endedRunSnapshot: null,
       };
     }
+
+    case "dismiss_summary":
+      return { ...state, endedRunSnapshot: null };
 
     case "reset_auto_dismiss": {
       const autoDismissEventTypes = state.autoDismissEventTypes.filter(

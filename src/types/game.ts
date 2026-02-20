@@ -119,6 +119,15 @@ export interface RunHistoryEntry {
   lastActionYearsDone?: number;
 }
 
+/** Snapshot of state at the moment a run ends (collapse/victory). */
+export interface EndedRunSnapshot {
+  run: RunState;
+  skills: Skills;
+  skillsAtRunStart: Skills;
+  lastRunYear: number;
+  totalRuns: number;
+}
+
 export interface GameState {
   skills: Skills;
   run: RunState;
@@ -131,4 +140,6 @@ export interface GameState {
   lastRunYear: number;
   skillsAtRunStart: Skills;
   runHistory: RunHistoryEntry[];
+  /** Present while the run-summary modal should be visible. */
+  endedRunSnapshot: EndedRunSnapshot | null;
 }
