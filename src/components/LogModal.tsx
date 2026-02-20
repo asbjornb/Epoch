@@ -67,15 +67,6 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
             <div className="run-history-reason">{entry.collapseReason}</div>
           )}
 
-          {entry.lastActionId != null && entry.lastActionYearsRemaining != null && (
-            <div className="run-history-section">
-              <div className="run-history-section-label">Incomplete Action</div>
-              <div className="run-history-last-action">
-                {getActionDef(entry.lastActionId)?.name ?? entry.lastActionId} — {entry.lastActionYearsDone ?? 0}/{(entry.lastActionYearsDone ?? 0) + entry.lastActionYearsRemaining} yrs ({entry.lastActionYearsRemaining} remaining)
-              </div>
-            </div>
-          )}
-
           <div className="run-history-section">
             <div className="run-history-section-label">Resources</div>
             <div className="run-history-stats">
@@ -140,7 +131,7 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
                           {incompleteActionDef?.name ?? entry.lastActionId}
                         </span>
                         <span className="run-history-action-progress">
-                          {entry.lastActionYearsDone ?? 0}/{totalDuration} yrs
+                          {entry.lastActionYearsDone ?? 0}/{totalDuration} yrs ({entry.lastActionYearsRemaining} remaining)
                         </span>
                       </div>
                     )}
