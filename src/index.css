@@ -1278,8 +1278,16 @@ h1, h2, h3 {
   padding: 0;
 }
 
-.actions-drawer .palette-label {
+.actions-drawer .palette-label-text {
   display: none;
+}
+
+.actions-drawer .palette-label {
+  margin-bottom: 6px;
+}
+
+.actions-drawer .hint-popover {
+  max-width: min(280px, calc(85vw - 60px));
 }
 
 /* ===== Mobile Year Display ===== */
