@@ -326,7 +326,7 @@ export function tick(state: GameState): GameState {
       pendingEvents.push({
         eventId: "tutorial_hints",
         title: "Hints",
-        message: "Not sure what to do next? Press the ? button near Actions for a hint on what to explore.",
+        message: "Not sure what to do next? Press the ? button at the top of the screen for a hint on what to explore.",
         type: "success",
         year: run.year,
         firstTime: true,
