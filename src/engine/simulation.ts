@@ -305,7 +305,7 @@ export function tick(state: GameState): GameState {
     const totalDefense = getTotalDefense(resources);
     const baseMilitary = Math.floor(resources.militaryStrength);
     const totalMult = (getMilitaryStrengthMultiplier(resources.researchedTechs) * getWallDefenseMultiplier(resources.wallsBuilt) * getFortificationMultiplier(resources.researchedTechs));
-    if (totalDefense < RAIDER_STRENGTH_REQUIRED) {
+    if (!(totalDefense >= RAIDER_STRENGTH_REQUIRED)) {
       run.status = "collapsed";
       const defenseDetail = `Total defense ${Math.floor(totalDefense)} (${baseMilitary} base × ${totalMult.toFixed(2)})`;
       const hasSeenDefense = state.seenEventTypes.includes("raider_survived");
