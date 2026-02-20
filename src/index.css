@@ -646,6 +646,51 @@ h1, h2, h3 {
   font-variant-numeric: tabular-nums;
 }
 
+/* Repeat progress bar shown below active items with repeat > 1 */
+.queue-repeat-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.queue-repeat-progress-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.queue-repeat-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.15s linear;
+}
+
+.queue-repeat-progress-divider {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.queue-repeat-progress-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .queue-item-right {
   display: flex;
   align-items: center;
