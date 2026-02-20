@@ -5,6 +5,7 @@ import type {
   LogEntry,
   QueueEntry,
   EventPopup,
+  ActionCategory,
 } from "../types/game.ts";
 import { getActionDef } from "../types/actions.ts";
 import {
@@ -72,8 +73,18 @@ export function createInitialRun(): RunState {
 export function getEffectiveDuration(
   baseDuration: number,
   skillLevel: number,
+  population: number = 1,
+  category: ActionCategory = "resource",
 ): number {
-  return Math.max(1, Math.round(baseDuration * getSkillDurationMultiplier(skillLevel)));
+  const skillDuration = baseDuration * getSkillDurationMultiplier(skillLevel);
+  if (category === "building") {
+    return Math.max(1, Math.ceil(skillDuration / population));
+  }
+  if (category === "research") {
+    return Math.max(1, Math.ceil(skillDuration / Math.pow(population, 0.8)));
+  }
+  // Resource and military: population doesn't affect duration
+  return Math.max(1, Math.round(skillDuration));
 }
 
 /** Tech level gives a 10% output bonus per level */
@@ -81,9 +92,12 @@ function getTechMultiplier(techLevel: number): number {
   return 1.0 + techLevel * 0.1;
 }
 
-/** Population productivity: gentle scaling, sqrt-based */
-function getPopulationMultiplier(population: number): number {
-  return Math.max(1.0, Math.sqrt(population / 5));
+/** Population output multiplier: linear for resource/military, none for building/research */
+function getPopulationOutputMultiplier(population: number, category: ActionCategory): number {
+  if (category === "resource" || category === "military") {
+    return population;
+  }
+  return 1;
 }
 
 function getCurrentQueueEntry(run: RunState): { entry: QueueEntry; index: number } | null {
@@ -171,9 +185,8 @@ export function tick(state: GameState): GameState {
     resources.population++;
   }
 
-  // Combined output multipliers from tech and population
+  // Tech multiplier (applied to all actions)
   const techMult = getTechMultiplier(resources.techLevel);
-  const popMult = getPopulationMultiplier(resources.population);
 
   // Process current action
   const current = getCurrentQueueEntry(run);
@@ -190,7 +203,8 @@ export function tick(state: GameState): GameState {
     const def = getActionDef(entry.actionId);
     if (def) {
       const skillLevel = skills[def.skill].level;
-      const duration = getEffectiveDuration(def.baseDuration, skillLevel);
+      const duration = getEffectiveDuration(def.baseDuration, skillLevel, resources.population, def.category);
+      const popMult = getPopulationOutputMultiplier(resources.population, def.category);
       const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
 
       // Check material cost at start of action
@@ -534,9 +548,9 @@ export function simulateQueuePreview(
 
     // Multipliers
     const techMult = getTechMultiplier(resources.techLevel);
-    const popMult = getPopulationMultiplier(resources.population);
     const skillLevel = simSkills[def.skill].level;
-    const duration = getEffectiveDuration(def.baseDuration, skillLevel);
+    const duration = getEffectiveDuration(def.baseDuration, skillLevel, resources.population, def.category);
+    const popMult = getPopulationOutputMultiplier(resources.population, def.category);
     const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
 
     // Material cost check at start of action

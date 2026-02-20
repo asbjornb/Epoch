@@ -5,8 +5,8 @@ import type {
   QueueEntry,
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
-import { isActionUnlocked, getSkillDurationMultiplier } from "../engine/skills.ts";
-import { simulateQueuePreview } from "../engine/simulation.ts";
+import { isActionUnlocked } from "../engine/skills.ts";
+import { simulateQueuePreview, getEffectiveDuration } from "../engine/simulation.ts";
 import type { GameAction } from "../hooks/useGame.ts";
 
 interface QueuePanelProps {
@@ -53,12 +53,11 @@ export function ActionPalette({
       <div className="palette-label">Actions</div>
       <div className="palette-grid">
         {visible.map((a) => {
-          const dur = Math.max(
-            1,
-            Math.round(
-              a.baseDuration *
-                getSkillDurationMultiplier(state.skills[a.skill].level),
-            ),
+          const dur = getEffectiveDuration(
+            a.baseDuration,
+            state.skills[a.skill].level,
+            state.run.resources.population,
+            a.category,
           );
           return (
             <button
@@ -306,11 +305,11 @@ export function QueuePanel({
   const getEffDuration = (actionId: ActionId) => {
     const def = getActionDef(actionId);
     if (!def) return 1;
-    return Math.max(
-      1,
-      Math.round(
-        def.baseDuration * getSkillDurationMultiplier(skills[def.skill].level),
-      ),
+    return getEffectiveDuration(
+      def.baseDuration,
+      skills[def.skill].level,
+      run.resources.population,
+      def.category,
     );
   };
 
