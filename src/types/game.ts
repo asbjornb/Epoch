@@ -27,7 +27,7 @@ export type ActionId =
   | "build_wall"
   | "train_militia"
   | "research_tools"
-  | "research_agriculture"
+  | "research_irrigation"
   | "research_storage"
   | "research_fortification"
   | "research_tactics"
@@ -45,6 +45,10 @@ export interface ActionDef {
   baseDuration: number;
   unlockLevel: number;
   woodCost?: number;
+  /** Override which skill gates unlocking (defaults to `skill`) */
+  unlockSkill?: SkillName;
+  /** Tech that must be researched before this action unlocks */
+  requiredTech?: ActionId;
 }
 
 export interface QueueEntry {

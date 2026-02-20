@@ -99,15 +99,17 @@ export function getEffectiveDuration(
 function getTechMultiplierForAction(researchedTechs: string[], actionId: string): number {
   let mult = 1.0;
   if (researchedTechs.includes("research_tools") && actionId === "gather_wood") {
-    mult *= 1.5;
+    mult *= 1.15;
   }
-  if (researchedTechs.includes("research_agriculture") && actionId === "farm") {
-    mult *= 1.5;
-  }
-  if (researchedTechs.includes("research_tactics") && (actionId === "train_militia" || actionId === "scout")) {
-    mult *= 1.5;
+  if (researchedTechs.includes("research_irrigation") && actionId === "farm") {
+    mult *= 1.15;
   }
   return mult;
+}
+
+/** Military strength multiplier from tactics research */
+function getMilitaryStrengthMultiplier(researchedTechs: string[]): number {
+  return researchedTechs.includes("research_tactics") ? 1.15 : 1.0;
 }
 
 /** Check if an action is a research tech (single-use) */
@@ -281,10 +283,11 @@ export function tick(state: GameState): GameState {
 
   // Raider event - wall defense counts toward total defense
   if (run.year === RAIDER_YEAR) {
-    const totalDefense = resources.militaryStrength + resources.wallDefense;
+    const effectiveMilitary = resources.militaryStrength * getMilitaryStrengthMultiplier(resources.researchedTechs);
+    const totalDefense = effectiveMilitary + resources.wallDefense;
     if (totalDefense < RAIDER_STRENGTH_REQUIRED) {
       run.status = "collapsed";
-      const defenseDetail = `Total defense ${Math.floor(totalDefense)} (military ${Math.floor(resources.militaryStrength)} + walls ${Math.floor(resources.wallDefense)})`;
+      const defenseDetail = `Total defense ${Math.floor(totalDefense)} (military ${Math.floor(effectiveMilitary)} + walls ${Math.floor(resources.wallDefense)})`;
       const hasSeenDefense = state.seenEventTypes.includes("raider_survived");
       run.collapseReason = hasSeenDefense
         ? `Raiders attacked at year ${RAIDER_YEAR}. ${defenseDetail} < ${RAIDER_STRENGTH_REQUIRED} required.`
@@ -449,13 +452,13 @@ function applyActionCompletion(
       if (!resources.researchedTechs.includes("research_tools")) {
         resources.researchedTechs = [...resources.researchedTechs, "research_tools"];
       }
-      log.push({ year, message: "Improved Tools researched. Wood gathering +50%.", type: "info" });
+      log.push({ year, message: "Improved Tools researched. Wood gathering +15%.", type: "info" });
       break;
-    case "research_agriculture":
-      if (!resources.researchedTechs.includes("research_agriculture")) {
-        resources.researchedTechs = [...resources.researchedTechs, "research_agriculture"];
+    case "research_irrigation":
+      if (!resources.researchedTechs.includes("research_irrigation")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_irrigation"];
       }
-      log.push({ year, message: "Agriculture researched. Farming output +50%.", type: "info" });
+      log.push({ year, message: "Irrigation researched. Farming output +15%.", type: "info" });
       break;
     case "research_storage":
       if (!resources.researchedTechs.includes("research_storage")) {
@@ -475,7 +478,7 @@ function applyActionCompletion(
       if (!resources.researchedTechs.includes("research_tactics")) {
         resources.researchedTechs = [...resources.researchedTechs, "research_tactics"];
       }
-      log.push({ year, message: "Tactics researched. Military training +50%.", type: "info" });
+      log.push({ year, message: "Tactics researched. Military strength +15%.", type: "info" });
       break;
     case "cure_food": {
       const amount = Math.min(100, resources.food);
@@ -511,9 +514,9 @@ function applyCompletionPreview(
         resources.researchedTechs = [...resources.researchedTechs, "research_tools"];
       }
       break;
-    case "research_agriculture":
-      if (!resources.researchedTechs.includes("research_agriculture")) {
-        resources.researchedTechs = [...resources.researchedTechs, "research_agriculture"];
+    case "research_irrigation":
+      if (!resources.researchedTechs.includes("research_irrigation")) {
+        resources.researchedTechs = [...resources.researchedTechs, "research_irrigation"];
       }
       break;
     case "research_storage":
