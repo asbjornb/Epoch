@@ -98,6 +98,7 @@ export interface RunHistoryEntry {
   queue: RunHistoryQueueEntry[];
   resources: Resources;
   totalFoodSpoiled?: number;
+  skillsGained?: Partial<Record<SkillName, number>>;
 }
 
 export interface GameState {

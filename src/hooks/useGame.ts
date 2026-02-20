@@ -4,6 +4,7 @@ import type {
   QueueEntry,
   ActionId,
   RunHistoryEntry,
+  SkillName,
 } from "../types/game.ts";
 import { ACTION_DEFS } from "../types/actions.ts";
 import { initialSkills, isActionUnlocked } from "../engine/skills.ts";
@@ -310,6 +311,14 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         state.run.repeatLastAction,
       );
 
+      // Compute skill levels gained during this run
+      const skillNames: SkillName[] = ["farming", "building", "research", "military"];
+      const skillsGained: Partial<Record<SkillName, number>> = {};
+      for (const name of skillNames) {
+        const gained = state.skills[name].level - state.skillsAtRunStart[name].level;
+        if (gained > 0) skillsGained[name] = gained;
+      }
+
       const historyEntry: RunHistoryEntry = {
         runNumber: totalRuns,
         year: state.run.year,
@@ -322,6 +331,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         })),
         resources: { ...state.run.resources },
         totalFoodSpoiled: state.run.totalFoodSpoiled || 0,
+        ...(Object.keys(skillsGained).length > 0 && { skillsGained }),
       };
       const runHistory = [historyEntry, ...state.runHistory].slice(0, 10);
       localStorage.setItem("epoch_run_history", JSON.stringify(runHistory));
