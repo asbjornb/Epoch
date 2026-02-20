@@ -311,14 +311,6 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
           </div>
         </div>
         <div className="queue-header-right">
-          <label className="auto-restart-toggle" title="Automatically restart on collapse">
-            <input
-              type="checkbox"
-              checked={run.autoRestart}
-              onChange={() => dispatch({ type: "toggle_auto_restart" })}
-            />
-            <span className="auto-restart-label">Auto</span>
-          </label>
           {isIdle && (
             <button
               className="ctrl-btn primary"
@@ -422,18 +414,44 @@ export function QueuePanel({ state, dispatch }: QueuePanelProps) {
                 );
               });
             })()}
-            <button
-              className={`queue-repeat-toggle ${run.repeatLastAction ? "active" : ""}`}
-              onClick={() => dispatch({ type: "toggle_repeat_last_action" })}
-              title={run.repeatLastAction
-                ? "Currently repeating last action until collapse. Click to pause at queue end instead."
-                : "Currently pausing at queue end. Click to repeat last action until collapse."}
-            >
-              <span className="queue-repeat-toggle-icon">↻</span>
-              {run.repeatLastAction
-                ? "Repeat last action until collapse"
-                : "Pause at queue end"}
-            </button>
+            <div className="queue-toggles">
+              <button
+                className={`queue-toggle-row ${run.repeatLastAction ? "active" : ""}`}
+                onClick={() => dispatch({ type: "toggle_repeat_last_action" })}
+                title={run.repeatLastAction
+                  ? "Currently repeating last action until collapse. Click to pause at queue end instead."
+                  : "Currently pausing at queue end. Click to repeat last action until collapse."}
+              >
+                <span className="queue-toggle-label">
+                  {run.repeatLastAction
+                    ? "Repeat last action until collapse"
+                    : "Pause at queue end"}
+                </span>
+                <span className="queue-toggle-switch">
+                  <span className="queue-toggle-track">
+                    <span className="queue-toggle-knob" />
+                  </span>
+                </span>
+              </button>
+              <button
+                className={`queue-toggle-row ${run.autoRestart ? "active" : ""}`}
+                onClick={() => dispatch({ type: "toggle_auto_restart" })}
+                title={run.autoRestart
+                  ? "Automatically restarting on collapse. Click to stop at end instead."
+                  : "Stopping on collapse. Click to auto-restart instead."}
+              >
+                <span className="queue-toggle-label">
+                  {run.autoRestart
+                    ? "Auto-restart on collapse"
+                    : "Stop on collapse"}
+                </span>
+                <span className="queue-toggle-switch">
+                  <span className="queue-toggle-track">
+                    <span className="queue-toggle-knob" />
+                  </span>
+                </span>
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -67,14 +67,6 @@ export function Controls({ run, totalRuns, dispatch }: ControlsProps) {
       </div>
 
       <div className="controls-right">
-        <label className="auto-restart-toggle" title="Automatically restart on collapse">
-          <input
-            type="checkbox"
-            checked={run.autoRestart}
-            onChange={() => dispatch({ type: "toggle_auto_restart" })}
-          />
-          <span className="auto-restart-label">Auto</span>
-        </label>
         <span className="run-counter">Run #{totalRuns + 1}</span>
       </div>
     </div>
