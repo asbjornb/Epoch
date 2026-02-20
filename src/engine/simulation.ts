@@ -115,10 +115,11 @@ function isResearchTech(actionId: string): boolean {
   return actionId.startsWith("research_");
 }
 
-/** Population output multiplier: linear for resource/military, none for building/research */
+/** Population output multiplier: linear for resource/military, none for building/research.
+ *  Normalized so starting pop (2) gives 1x — matches the baseline per-tick values were tuned for. */
 function getPopulationOutputMultiplier(population: number, category: ActionCategory): number {
   if (category === "resource" || category === "military") {
-    return population;
+    return population / 2;
   }
   return 1;
 }
