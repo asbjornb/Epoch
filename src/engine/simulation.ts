@@ -24,7 +24,14 @@ const WINTER_START = 4000;
 const WINTER_END = 4500;
 const INITIAL_MAX_POP = 2;
 const INITIAL_FOOD_STORAGE = 200;
-const SPOILAGE_RATE = 0.02; // 2% of excess food spoils per tick
+const SPOILAGE_DIVISOR = 400; // tuning constant for quadratic spoilage curve
+
+/** Smooth spoilage: scales quadratically with food, reduced by foodStorage.
+ *  At base storage (200): ~0.5/tick at 200 food, ~2/tick at 400, ~3.1/tick at 500. */
+function calculateSpoilage(food: number, foodStorage: number): number {
+  if (food <= 0 || foodStorage <= 0) return 0;
+  return (food * food) / (SPOILAGE_DIVISOR * foodStorage);
+}
 
 export const DISASTERS: DisasterInfo[] = [
   { id: "raider", name: "Raider Era", year: RAIDER_YEAR, color: "#8b5555" },
@@ -140,17 +147,16 @@ export function tick(state: GameState): GameState {
     }
   }
 
-  // Food spoilage: food beyond storage cap decays
-  if (resources.food > resources.foodStorage) {
-    const excess = resources.food - resources.foodStorage;
-    const spoiled = Math.ceil(excess * SPOILAGE_RATE);
+  // Food spoilage: smooth quadratic curve, always applies
+  const spoiled = calculateSpoilage(resources.food, resources.foodStorage);
+  if (spoiled > 0.001) {
     resources.food -= spoiled;
     run.totalFoodSpoiled = (run.totalFoodSpoiled || 0) + spoiled;
     // Log spoilage periodically (every 500 years)
-    if (run.year % 500 === 0 && spoiled > 0) {
+    if (run.year % 500 === 0) {
       log.push({
         year: run.year,
-        message: `Food spoiling — ${Math.floor(spoiled)}/yr excess lost. Total spoiled: ${Math.floor(run.totalFoodSpoiled)}.`,
+        message: `Food spoilage: ${spoiled.toFixed(1)}/yr lost. Total spoiled: ${Math.floor(run.totalFoodSpoiled)}.`,
         type: "warning",
       });
     }
@@ -259,7 +265,8 @@ export function tick(state: GameState): GameState {
 
   // Winter event
   if (run.year === WINTER_START) {
-    const winterMsg = `The Great Cold begins. Farming disabled, food consumption doubled. Food stored: ${Math.floor(resources.food)}/${Math.floor(resources.foodStorage)}.`;
+    const winterSpoilage = calculateSpoilage(resources.food, resources.foodStorage);
+    const winterMsg = `The Great Cold begins. Farming disabled, food consumption doubled. Food: ${Math.floor(resources.food)} (spoilage: ${winterSpoilage.toFixed(1)}/yr).`;
     log.push({ year: run.year, message: winterMsg, type: "warning" });
     const firstTime = !state.seenEventTypes.includes("winter_start");
     const shouldPause = !state.autoDismissEventTypes.includes("winter_start");
@@ -506,10 +513,10 @@ export function simulateQueuePreview(
       break;
     }
 
-    // Spoilage
-    if (resources.food > resources.foodStorage) {
-      const excess = resources.food - resources.foodStorage;
-      resources.food -= Math.ceil(excess * SPOILAGE_RATE);
+    // Spoilage (smooth quadratic)
+    const spoilage = calculateSpoilage(resources.food, resources.foodStorage);
+    if (spoilage > 0.001) {
+      resources.food -= spoilage;
     }
 
     // Pop growth
