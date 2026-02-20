@@ -9,6 +9,7 @@ import { RunSummaryModal } from "./components/RunSummaryModal.tsx";
 import { LogModal } from "./components/LogModal.tsx";
 import { SettingsPanel } from "./components/SettingsPanel.tsx";
 import { IncompatibleSaveModal } from "./components/IncompatibleSaveModal.tsx";
+import { HintButton } from "./components/HintButton.tsx";
 import { getActionDef } from "./types/actions.ts";
 import type { ActionId, QueueEntry } from "./types/game.ts";
 
@@ -65,6 +66,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Epoch</h1>
+        <HintButton state={state} />
         <div className="header-buttons">
           <button
             className="header-btn"
