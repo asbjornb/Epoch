@@ -100,8 +100,6 @@ function QueueItem({
   if (!def) return null;
 
   const pct = isActive ? Math.min(100, (progress / duration) * 100) : 0;
-  const isInfinite = entry.repeat === -1;
-
   return (
     <div className={`queue-item ${isActive ? "active" : ""}`}>
       {isActive && (
@@ -119,11 +117,9 @@ function QueueItem({
             <button
               className="queue-repeat-btn"
               onClick={() => {
-                if (isInfinite) return;
                 const next = Math.max(1, entry.repeat - 1);
                 dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: next });
               }}
-              disabled={isInfinite}
               title="Decrease"
             >
               -
@@ -131,8 +127,7 @@ function QueueItem({
             <input
               type="number"
               className="queue-repeat-input"
-              value={isInfinite ? "" : entry.repeat}
-              placeholder="\u221E"
+              value={entry.repeat}
               min={1}
               onChange={(e) => {
                 const val = parseInt(e.target.value, 10);
@@ -140,31 +135,15 @@ function QueueItem({
                   dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: val });
                 }
               }}
-              disabled={isInfinite}
             />
             <button
               className="queue-repeat-btn"
               onClick={() => {
-                if (isInfinite) return;
                 dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: entry.repeat + 1 });
               }}
-              disabled={isInfinite}
               title="Increase"
             >
               +
-            </button>
-            <button
-              className={`queue-repeat-inf ${isInfinite ? "active" : ""}`}
-              onClick={() =>
-                dispatch({
-                  type: "queue_set_repeat",
-                  uid: entry.uid,
-                  repeat: isInfinite ? 1 : -1,
-                })
-              }
-              title="Toggle infinite repeat"
-            >
-              ∞
             </button>
           </span>
           {isActive && (
@@ -221,9 +200,10 @@ function QueuePreviewDisplay({
   const { run, skills } = state;
   const queue = run.queue;
 
+  const { repeatLastAction } = run;
   const preview = useMemo(
-    () => simulateQueuePreview(queue, skills),
-    [queue, skills],
+    () => simulateQueuePreview(queue, skills, repeatLastAction),
+    [queue, skills, repeatLastAction],
   );
 
   if (queue.length === 0) return null;
@@ -289,7 +269,7 @@ export function QueuePanel({ state, totalRuns, dispatch }: QueuePanelProps) {
   const totalYears = queue.reduce(
     (sum, e) => {
       const dur = getEffectiveDuration(e.actionId);
-      const reps = e.repeat === -1 ? 1 : e.repeat; // show 1x for infinite in total
+      const reps = e.repeat;
       return sum + dur * reps;
     },
     0,
@@ -382,14 +362,16 @@ export function QueuePanel({ state, totalRuns, dispatch }: QueuePanelProps) {
               let activeArrayIdx = -1;
               let logicalPos = 0;
               for (let j = 0; j < queue.length; j++) {
-                const reps = queue[j].repeat === -1 ? Infinity : queue[j].repeat;
+                const reps = queue[j].repeat;
                 if (logicalPos + reps > run.currentQueueIndex) {
                   activeArrayIdx = j;
                   break;
                 }
                 logicalPos += reps;
               }
-              if (activeArrayIdx === -1) activeArrayIdx = queue.length - 1;
+              if (activeArrayIdx === -1 && run.repeatLastAction) {
+                activeArrayIdx = queue.length - 1;
+              }
 
               const isActive =
                 run.status === "running" && i === activeArrayIdx;
@@ -408,9 +390,18 @@ export function QueuePanel({ state, totalRuns, dispatch }: QueuePanelProps) {
                 />
               );
             })}
-            <div className="queue-repeat-indicator">
-              ↻ Last action repeats until collapse
-            </div>
+            <button
+              className={`queue-repeat-toggle ${run.repeatLastAction ? "active" : ""}`}
+              onClick={() => dispatch({ type: "toggle_repeat_last_action" })}
+              title={run.repeatLastAction
+                ? "Currently repeating last action until collapse. Click to pause at queue end instead."
+                : "Currently pausing at queue end. Click to repeat last action until collapse."}
+            >
+              <span className="queue-repeat-toggle-icon">↻</span>
+              {run.repeatLastAction
+                ? "Repeat last action until collapse"
+                : "Pause at queue end"}
+            </button>
           </div>
         )}
       </div>

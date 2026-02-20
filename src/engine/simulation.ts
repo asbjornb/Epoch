@@ -55,6 +55,7 @@ export function createInitialRun(): RunState {
     status: "idle",
     log: [],
     autoRestart: true,
+    repeatLastAction: true,
     pendingEvents: [],
     pausedByEvent: false,
   };
@@ -85,14 +86,18 @@ function getCurrentQueueEntry(run: RunState): { entry: QueueEntry; index: number
   let logicalPos = 0;
   for (let i = 0; i < run.queue.length; i++) {
     const entry = run.queue[i];
-    const repeats = entry.repeat === -1 ? Infinity : entry.repeat;
+    const repeats = entry.repeat;
     if (logicalPos + repeats > run.currentQueueIndex) {
       queueIdx = i;
       break;
     }
     logicalPos += repeats;
     if (i === run.queue.length - 1) {
-      return { entry: run.queue[run.queue.length - 1], index: run.currentQueueIndex };
+      // Queue exhausted — repeat last action or signal end
+      if (run.repeatLastAction) {
+        return { entry: run.queue[run.queue.length - 1], index: run.currentQueueIndex };
+      }
+      return null;
     }
   }
 
@@ -156,7 +161,15 @@ export function tick(state: GameState): GameState {
 
   // Process current action
   const current = getCurrentQueueEntry(run);
-  if (current) {
+  if (!current && !run.repeatLastAction && run.queue.length > 0) {
+    // Queue exhausted and not repeating — pause for player input
+    run.status = "paused";
+    log.push({
+      year: run.year,
+      message: "Queue complete. Add more actions or toggle repeat.",
+      type: "info",
+    });
+  } else if (current) {
     const { entry } = current;
     const def = getActionDef(entry.actionId);
     if (def) {
@@ -413,6 +426,7 @@ export interface QueuePreview {
 export function simulateQueuePreview(
   queue: QueueEntry[],
   skills: GameState["skills"],
+  repeatLastAction: boolean = true,
 ): QueuePreview {
   if (queue.length === 0) {
     return { resources: createInitialResources(), yearsUsed: 0, collapsed: false };
@@ -439,7 +453,7 @@ export function simulateQueuePreview(
     let arrayIdx = -1;
     let logicalPos = 0;
     for (let i = 0; i < queue.length; i++) {
-      const reps = queue[i].repeat === -1 ? Infinity : queue[i].repeat;
+      const reps = queue[i].repeat;
       if (logicalPos + reps > queueLogicalIndex) {
         arrayIdx = i;
         break;
@@ -447,9 +461,13 @@ export function simulateQueuePreview(
       logicalPos += reps;
     }
 
-    // If queue is exhausted (no infinite), the last entry repeats indefinitely
+    // If queue is exhausted, repeat last action or stop
     if (arrayIdx === -1) {
-      arrayIdx = queue.length - 1;
+      if (repeatLastAction) {
+        arrayIdx = queue.length - 1;
+      } else {
+        break;
+      }
     }
 
     const entry = queue[arrayIdx];
