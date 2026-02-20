@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import type {
   ActionId,
   GameState,
@@ -5,6 +6,7 @@ import type {
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { isActionUnlocked, getSkillDurationMultiplier } from "../engine/skills.ts";
+import { simulateQueue, createInitialResources } from "../engine/simulation.ts";
 import type { GameAction } from "../hooks/useGame.ts";
 
 interface QueuePanelProps {
@@ -75,6 +77,115 @@ function ActionPalette({
   );
 }
 
+function RepeatControl({
+  entry,
+  dispatch,
+}: {
+  entry: QueueEntry;
+  dispatch: React.Dispatch<GameAction>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const isInfinite = entry.repeat === -1;
+
+  const commitEdit = () => {
+    setEditing(false);
+    const num = parseInt(editValue, 10);
+    if (!isNaN(num) && num >= 1 && num <= 999) {
+      dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: num });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      commitEdit();
+    } else if (e.key === "Escape") {
+      setEditing(false);
+    }
+  };
+
+  const startEditing = () => {
+    if (!isInfinite) {
+      setEditValue(String(entry.repeat));
+      setEditing(true);
+    }
+  };
+
+  const decrement = () => {
+    if (!isInfinite && entry.repeat > 1) {
+      dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: entry.repeat - 1 });
+    }
+  };
+
+  const increment = () => {
+    if (!isInfinite && entry.repeat < 999) {
+      dispatch({ type: "queue_set_repeat", uid: entry.uid, repeat: entry.repeat + 1 });
+    }
+  };
+
+  const toggleInfinite = () => {
+    dispatch({
+      type: "queue_set_repeat",
+      uid: entry.uid,
+      repeat: isInfinite ? 1 : -1,
+    });
+    setEditing(false);
+  };
+
+  return (
+    <div className="repeat-control">
+      {isInfinite ? (
+        <span className="repeat-display infinite" title="Repeats forever">∞</span>
+      ) : editing ? (
+        <input
+          className="repeat-input"
+          type="number"
+          min={1}
+          max={999}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          autoFocus
+        />
+      ) : (
+        <>
+          <button
+            className="repeat-adj"
+            onClick={decrement}
+            disabled={entry.repeat <= 1}
+            title="Decrease"
+          >
+            -
+          </button>
+          <span
+            className="repeat-display"
+            onClick={startEditing}
+            title="Click to edit"
+          >
+            {entry.repeat}
+          </span>
+          <button
+            className="repeat-adj"
+            onClick={increment}
+            disabled={entry.repeat >= 999}
+            title="Increase"
+          >
+            +
+          </button>
+        </>
+      )}
+      <button
+        className={`repeat-inf-btn ${isInfinite ? "active" : ""}`}
+        onClick={toggleInfinite}
+        title={isInfinite ? "Set finite repeat" : "Repeat forever"}
+      >
+        ∞
+      </button>
+    </div>
+  );
+}
+
 function QueueItem({
   entry,
   index,
@@ -98,7 +209,6 @@ function QueueItem({
   if (!def) return null;
 
   const pct = isActive ? Math.min(100, (progress / duration) * 100) : 0;
-  const repeatLabel = entry.repeat === -1 ? "∞" : `×${entry.repeat}`;
 
   return (
     <div className={`queue-item ${isActive ? "active" : ""}`}>
@@ -113,7 +223,6 @@ function QueueItem({
             style={{ background: SKILL_COLORS[def.skill] }}
           />
           <span className="queue-item-name">{def.name}</span>
-          <span className="queue-item-repeat">{repeatLabel}</span>
           {isActive && (
             <span className="queue-item-timer">
               {progress}/{duration} years
@@ -121,19 +230,7 @@ function QueueItem({
           )}
         </div>
         <div className="queue-item-right">
-          <button
-            className="queue-btn"
-            onClick={() =>
-              dispatch({
-                type: "queue_set_repeat",
-                uid: entry.uid,
-                repeat: entry.repeat === -1 ? 1 : entry.repeat === 1 ? 3 : entry.repeat === 3 ? 5 : entry.repeat === 5 ? 10 : -1,
-              })
-            }
-            title="Cycle repeat count (1, 3, 5, 10, ∞)"
-          >
-            ↻
-          </button>
+          <RepeatControl entry={entry} dispatch={dispatch} />
           <button
             className="queue-btn"
             onClick={() =>
@@ -168,6 +265,72 @@ function QueueItem({
             ✕
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function formatDelta(value: number, initial: number): string {
+  const delta = value - initial;
+  if (delta >= 0) return `+${Math.floor(delta)}`;
+  return `${Math.floor(delta)}`;
+}
+
+function QueuePreview({ state }: { state: GameState }) {
+  const { skills, run } = state;
+  const queue = run.queue;
+
+  const preview = useMemo(() => {
+    if (queue.length === 0) return null;
+    return simulateQueue(skills, queue);
+  }, [skills, queue]);
+
+  if (!preview) return null;
+
+  const initial = createInitialResources();
+  const r = preview.resources;
+
+  const isVictory = preview.outcome === "victory";
+  const outcomeClass = isVictory ? "preview-victory" : "preview-collapse";
+  const outcomeText = isVictory
+    ? `Victory at Y${preview.year.toLocaleString()}`
+    : `Collapsed Y${preview.year.toLocaleString()}`;
+
+  type PreviewStat = { label: string; value: number; initial: number; key: string };
+  const stats: PreviewStat[] = [
+    { label: "Food", value: r.food, initial: initial.food, key: "food" },
+    { label: "Pop", value: r.population, initial: initial.population, key: "pop" },
+    { label: "Mat", value: r.materials, initial: initial.materials, key: "mat" },
+    { label: "Defense", value: r.militaryStrength + r.wallDefense, initial: 0, key: "def" },
+    { label: "Tech", value: r.techLevel, initial: initial.techLevel, key: "tech" },
+    { label: "Storage", value: r.foodStorage, initial: initial.foodStorage, key: "storage" },
+  ];
+
+  return (
+    <div className="queue-preview">
+      <div className="queue-preview-header">
+        <span className="queue-preview-label">Preview</span>
+        <span className={`queue-preview-outcome ${outcomeClass}`}>
+          {outcomeText}
+        </span>
+      </div>
+      {preview.collapseReason && (
+        <div className="queue-preview-reason">{preview.collapseReason}</div>
+      )}
+      <div className="queue-preview-stats">
+        {stats.map((s) => {
+          const delta = s.value - s.initial;
+          const deltaClass = delta > 0 ? "positive" : delta < 0 ? "negative" : "";
+          return (
+            <div key={s.key} className="queue-preview-stat">
+              <span className="queue-preview-stat-label">{s.label}</span>
+              <span className="queue-preview-stat-value">{Math.floor(s.value)}</span>
+              <span className={`queue-preview-stat-delta ${deltaClass}`}>
+                {formatDelta(s.value, s.initial)}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -321,6 +484,8 @@ export function QueuePanel({ state, totalRuns, dispatch }: QueuePanelProps) {
           </div>
         )}
       </div>
+
+      <QueuePreview state={state} />
 
       <div className="queue-actions-bar">
         <button

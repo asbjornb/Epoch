@@ -5,6 +5,7 @@ import type {
   LogEntry,
   QueueEntry,
   EventPopup,
+  Skills,
 } from "../types/game.ts";
 import { getActionDef } from "../types/actions.ts";
 import {
@@ -371,4 +372,172 @@ function applyActionCompletion(
       log.push({ year, message: `Food preservation improved. Storage now ${Math.floor(resources.foodStorage)}.`, type: "info" });
       break;
   }
+}
+
+function applyActionCompletionSim(
+  actionId: string,
+  resources: Resources,
+  outputMult: number,
+): void {
+  switch (actionId) {
+    case "build_hut":
+      resources.maxPopulation += 3;
+      break;
+    case "build_granary":
+      resources.foodStorage += Math.floor(150 * outputMult);
+      break;
+    case "build_wall":
+      resources.wallDefense += Math.floor(8 * outputMult);
+      break;
+    case "research_tools":
+      resources.techLevel += 1;
+      break;
+    case "preserve_food":
+      resources.foodStorage += Math.floor(30 * outputMult);
+      break;
+  }
+}
+
+function getSimQueueEntry(queue: QueueEntry[], logicalIndex: number): QueueEntry | null {
+  if (queue.length === 0) return null;
+
+  let logicalPos = 0;
+  for (let i = 0; i < queue.length; i++) {
+    const entry = queue[i];
+    const repeats = entry.repeat === -1 ? Infinity : entry.repeat;
+    if (logicalPos + repeats > logicalIndex) {
+      return entry;
+    }
+    logicalPos += repeats;
+  }
+  // Past all entries, last action repeats
+  return queue[queue.length - 1];
+}
+
+export interface QueuePreviewResult {
+  resources: Resources;
+  year: number;
+  outcome: "collapsed" | "victory";
+  collapseReason?: string;
+}
+
+export function simulateQueue(
+  skills: Skills,
+  queue: QueueEntry[],
+): QueuePreviewResult {
+  if (queue.length === 0) {
+    return {
+      resources: createInitialResources(),
+      year: 0,
+      outcome: "collapsed",
+      collapseReason: "Empty queue.",
+    };
+  }
+
+  const resources: Resources = createInitialResources();
+  const simSkills = {
+    farming: { ...skills.farming },
+    building: { ...skills.building },
+    research: { ...skills.research },
+    military: { ...skills.military },
+  };
+
+  let year = 0;
+  const maxYear = 10000;
+  let currentQueueIndex = 0;
+  let currentActionProgress = 0;
+  let outcome: "collapsed" | "victory" = "victory";
+  let collapseReason: string | undefined;
+
+  while (year < maxYear) {
+    year++;
+
+    const isWinter = year >= WINTER_START && year <= WINTER_END;
+
+    // Food consumption
+    const foodPerPop = isWinter ? WINTER_FOOD_PER_POP : FOOD_PER_POP;
+    resources.food -= resources.population * foodPerPop;
+
+    // Starvation
+    if (resources.food < 0) {
+      const deaths = Math.min(
+        resources.population,
+        Math.ceil(Math.abs(resources.food) / 2),
+      );
+      resources.population = Math.max(0, resources.population - deaths);
+      resources.food = 0;
+    }
+
+    // Food spoilage
+    if (resources.food > resources.foodStorage) {
+      const excess = resources.food - resources.foodStorage;
+      resources.food -= Math.ceil(excess * SPOILAGE_RATE);
+    }
+
+    // Population growth
+    if (
+      !isWinter &&
+      resources.population < resources.maxPopulation &&
+      resources.food > resources.population * FOOD_PER_POP + POP_GROWTH_THRESHOLD
+    ) {
+      resources.population++;
+    }
+
+    const techMult = getTechMultiplier(resources.techLevel);
+    const popMult = getPopulationMultiplier(resources.population);
+
+    // Process current action
+    const entry = getSimQueueEntry(queue, currentQueueIndex);
+    if (entry) {
+      const def = getActionDef(entry.actionId);
+      if (def) {
+        const skillLevel = simSkills[def.skill].level;
+        const duration = getEffectiveDuration(def.baseDuration, skillLevel);
+        const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
+
+        if (currentActionProgress === 0 && def.materialCost && def.materialCost > resources.materials) {
+          currentActionProgress = 0;
+          currentQueueIndex++;
+        } else {
+          if (currentActionProgress === 0 && def.materialCost) {
+            resources.materials -= def.materialCost;
+          }
+
+          applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
+          simSkills[def.skill] = addXp(simSkills[def.skill], 1);
+
+          currentActionProgress++;
+
+          if (currentActionProgress >= duration) {
+            applyActionCompletionSim(entry.actionId, resources, outputMult);
+            currentActionProgress = 0;
+            currentQueueIndex++;
+          }
+        }
+      }
+    }
+
+    // Raiders
+    if (year === RAIDER_YEAR) {
+      const totalDefense = resources.militaryStrength + resources.wallDefense;
+      if (totalDefense < RAIDER_STRENGTH_REQUIRED) {
+        outcome = "collapsed";
+        collapseReason = `Raiders at Y${RAIDER_YEAR}. Defense ${Math.floor(totalDefense)}/${RAIDER_STRENGTH_REQUIRED}.`;
+        break;
+      } else {
+        resources.food += Math.floor(50 * techMult);
+        resources.materials += 20;
+        simSkills.military = addXp(simSkills.military, 50);
+      }
+    }
+
+    // Collapse from starvation
+    if (resources.population <= 0) {
+      outcome = "collapsed";
+      collapseReason = "Population starved.";
+      break;
+    }
+  }
+
+  return { resources, year, outcome, collapseReason };
 }
