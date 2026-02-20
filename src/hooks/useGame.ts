@@ -189,7 +189,42 @@ function createInitialState(): GameState {
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "tick": {
-      const tickedState = tick(state);
+      let tickedState = tick(state);
+
+      // When food cap is reached, unlock the other starting actions
+      const { resources } = tickedState.run;
+      if (resources.food >= resources.foodStorage) {
+        const startingUnlocks: ActionId[] = ["gather_materials", "train_militia", "research_tools"];
+        const missing = startingUnlocks.filter(id => !tickedState.unlockedActions.includes(id));
+        if (missing.length > 0) {
+          const unlockedActions = [...tickedState.unlockedActions, ...missing];
+          localStorage.setItem("epoch_unlocked_actions", JSON.stringify(unlockedActions));
+
+          const shouldPause = !tickedState.autoDismissEventTypes.includes("food_cap_unlock");
+          const firstTime = !tickedState.seenEventTypes.includes("food_cap_unlock");
+          const run = { ...tickedState.run };
+          run.pendingEvents = [...run.pendingEvents, {
+            eventId: "food_cap_unlock",
+            title: "New Skills Discovered",
+            message: "Your food stores are full. Your people now have time to explore new pursuits: gathering materials, military training, and tool research.",
+            type: "success" as const,
+            year: run.year,
+            firstTime,
+          }];
+          if (shouldPause) {
+            run.status = "paused";
+            run.pausedByEvent = true;
+          }
+          run.log = [...run.log, {
+            year: run.year,
+            message: "Food storage full — new skills unlocked: Building, Military, Research.",
+            type: "success" as const,
+          }];
+
+          tickedState = { ...tickedState, unlockedActions, run };
+        }
+      }
+
       // Check if skills unlocked new actions
       const newUnlocks = computeSkillUnlocks(tickedState.unlockedActions, tickedState.skills);
       if (newUnlocks !== tickedState.unlockedActions) {
@@ -239,19 +274,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const runHistory = [historyEntry, ...state.runHistory].slice(0, 10);
       localStorage.setItem("epoch_run_history", JSON.stringify(runHistory));
 
-      // After first run, unlock the other three starting actions
-      let unlockedActions = state.unlockedActions;
-      if (state.totalRuns === 0) {
-        const firstRunUnlocks: ActionId[] = ["gather_materials", "train_militia", "research_tools"];
-        unlockedActions = [...unlockedActions];
-        for (const id of firstRunUnlocks) {
-          if (!unlockedActions.includes(id)) {
-            unlockedActions.push(id);
-          }
-        }
-      }
-      // Also check skill-based unlocks
-      unlockedActions = computeSkillUnlocks(unlockedActions, state.skills);
+      // Check skill-based unlocks
+      const unlockedActions = computeSkillUnlocks(state.unlockedActions, state.skills);
       localStorage.setItem("epoch_unlocked_actions", JSON.stringify(unlockedActions));
 
       // Preserve queue and autoRestart setting from previous run
