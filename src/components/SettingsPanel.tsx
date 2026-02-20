@@ -10,6 +10,13 @@ interface SettingsPanelProps {
   wakeLock?: { supported: boolean; enabled: boolean; active: boolean; toggle: () => void };
 }
 
+const EVENT_LABELS: Record<string, string> = {
+  food_cap_unlock: "New Skills Discovered",
+  raider_survived: "Raiders Repelled",
+  winter_start: "The Great Cold",
+  winter_end: "Spring Returns",
+};
+
 export function SettingsPanel({ state, dispatch, onClose, wakeLock }: SettingsPanelProps) {
   const [importText, setImportText] = useState("");
   const [feedback, setFeedback] = useState<{ msg: string; type: "success" | "danger" } | null>(null);
@@ -119,6 +126,36 @@ export function SettingsPanel({ state, dispatch, onClose, wakeLock }: SettingsPa
                 </span>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Event Pause Preferences */}
+        {state.autoDismissEventTypes.length > 0 && (
+          <div className="settings-section">
+            <div className="settings-section-label">Event Pause Settings</div>
+            <div className="settings-auto-dismiss-list">
+              {state.autoDismissEventTypes.map((eventId) => (
+                <div key={eventId} className="settings-auto-dismiss-item">
+                  <span className="settings-auto-dismiss-name">
+                    {EVENT_LABELS[eventId] || eventId}
+                  </span>
+                  <button
+                    className="settings-auto-dismiss-undo"
+                    onClick={() => dispatch({ type: "reset_auto_dismiss", eventId })}
+                  >
+                    Re-enable pause
+                  </button>
+                </div>
+              ))}
+            </div>
+            {state.autoDismissEventTypes.length > 1 && (
+              <button
+                className="ctrl-btn"
+                onClick={() => dispatch({ type: "reset_all_auto_dismiss" })}
+              >
+                Re-enable all pauses
+              </button>
+            )}
           </div>
         )}
 
