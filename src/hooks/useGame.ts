@@ -20,6 +20,8 @@ export type GameAction =
   | { type: "toggle_repeat_last_action" }
   | { type: "dismiss_event" }
   | { type: "dismiss_event_no_pause" }
+  | { type: "dismiss_event_by_id"; eventId: string }
+  | { type: "dismiss_event_no_pause_by_id"; eventId: string }
   | { type: "queue_add"; actionId: ActionId; repeat?: number }
   | { type: "queue_remove"; uid: string }
   | { type: "queue_move"; uid: string; direction: "up" | "down" }
@@ -504,6 +506,47 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         status: shouldResume ? "running" as const : state.run.status,
       };
       return { ...state, run, seenEventTypes, autoDismissEventTypes };
+    }
+
+    case "dismiss_event_by_id": {
+      const targetId = action.eventId;
+      const filteredEvents = state.run.pendingEvents.filter(e => e.eventId !== targetId);
+      let seenById = state.seenEventTypes;
+      if (!seenById.includes(targetId)) {
+        seenById = [...seenById, targetId];
+        localStorage.setItem("epoch_seen_event_types", JSON.stringify(seenById));
+      }
+      const resumeById = state.run.pausedByEvent && filteredEvents.length === 0;
+      const runById = {
+        ...state.run,
+        pendingEvents: filteredEvents,
+        pausedByEvent: filteredEvents.length > 0 ? state.run.pausedByEvent : false,
+        status: resumeById ? "running" as const : state.run.status,
+      };
+      return { ...state, run: runById, seenEventTypes: seenById };
+    }
+
+    case "dismiss_event_no_pause_by_id": {
+      const npTargetId = action.eventId;
+      const npFilteredEvents = state.run.pendingEvents.filter(e => e.eventId !== npTargetId);
+      let npSeen = state.seenEventTypes;
+      if (!npSeen.includes(npTargetId)) {
+        npSeen = [...npSeen, npTargetId];
+        localStorage.setItem("epoch_seen_event_types", JSON.stringify(npSeen));
+      }
+      let npAutoDismiss = state.autoDismissEventTypes;
+      if (!npAutoDismiss.includes(npTargetId)) {
+        npAutoDismiss = [...npAutoDismiss, npTargetId];
+        localStorage.setItem("epoch_auto_dismiss_event_types", JSON.stringify(npAutoDismiss));
+      }
+      const npResume = state.run.pausedByEvent && npFilteredEvents.length === 0;
+      const npRun = {
+        ...state.run,
+        pendingEvents: npFilteredEvents,
+        pausedByEvent: npFilteredEvents.length > 0 ? state.run.pausedByEvent : false,
+        status: npResume ? "running" as const : state.run.status,
+      };
+      return { ...state, run: npRun, seenEventTypes: npSeen, autoDismissEventTypes: npAutoDismiss };
     }
 
     case "toggle_auto_restart": {

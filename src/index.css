@@ -1612,6 +1612,80 @@ h1, h2, h3 {
   line-height: 1.4;
 }
 
+/* Tutorial toast stack (persistent, dismiss-on-click) */
+.tutorial-toast-stack {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+  width: calc(100% - 32px);
+  pointer-events: none;
+}
+
+.tutorial-toast {
+  background: var(--bg-surface);
+  border: 1px solid rgba(106, 143, 92, 0.5);
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  animation: tutorialSlideDown 0.25s ease;
+  pointer-events: auto;
+}
+
+.tutorial-toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.tutorial-toast-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tutorial-toast-year {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.tutorial-toast-title {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.tutorial-toast-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.tutorial-toast-close:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.tutorial-toast-message {
+  font-size: 0.75rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
 /* ===== Run Summary Modal ===== */
 .run-summary-overlay {
   position: fixed;
@@ -2416,6 +2490,11 @@ h1, h2, h3 {
 @keyframes slideDown {
   from { transform: translate(-50%, -16px); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@keyframes tutorialSlideDown {
+  from { transform: translateY(-12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes slideFromLeft {

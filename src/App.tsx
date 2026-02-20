@@ -5,6 +5,7 @@ import { QueuePanel, ActionPalette } from "./components/QueuePanel.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { SkillsPanel } from "./components/SkillsPanel.tsx";
 import { EventModal } from "./components/EventModal.tsx";
+import { TutorialToast } from "./components/TutorialToast.tsx";
 import { RunSummaryModal } from "./components/RunSummaryModal.tsx";
 import { LogModal } from "./components/LogModal.tsx";
 import { SettingsPanel } from "./components/SettingsPanel.tsx";
@@ -44,14 +45,24 @@ function App() {
     }
   }, [draftMode, dispatch]);
 
-  const pendingEvent = state.run.pendingEvents[0] ?? null;
+  // Separate tutorial events (persistent toasts) from regular events (modal)
+  const tutorialEvents = state.run.pendingEvents.filter(e => e.eventId.startsWith("tutorial_"));
+  const pendingEvent = state.run.pendingEvents.find(e => !e.eventId.startsWith("tutorial_")) ?? null;
 
   const handleDismissEvent = useCallback(() => {
-    dispatch({ type: "dismiss_event" });
-  }, [dispatch]);
+    if (pendingEvent) {
+      dispatch({ type: "dismiss_event_by_id", eventId: pendingEvent.eventId });
+    }
+  }, [dispatch, pendingEvent]);
 
   const handleDismissEventNoPause = useCallback(() => {
-    dispatch({ type: "dismiss_event_no_pause" });
+    if (pendingEvent) {
+      dispatch({ type: "dismiss_event_no_pause_by_id", eventId: pendingEvent.eventId });
+    }
+  }, [dispatch, pendingEvent]);
+
+  const handleDismissTutorial = useCallback((eventId: string) => {
+    dispatch({ type: "dismiss_event_by_id", eventId });
   }, [dispatch]);
 
   const handleDismissRunSummary = useCallback(() => {
@@ -138,11 +149,14 @@ function App() {
         </div>
       )}
 
+      {/* Tutorial toasts (persistent, stacking) */}
+      <TutorialToast events={tutorialEvents} onDismiss={handleDismissTutorial} />
+
       {/* Event popup modal */}
       {pendingEvent && (
         <EventModal
           event={pendingEvent}
-          autoDismiss={pendingEvent.eventId.startsWith("tutorial_") || state.autoDismissEventTypes.includes(pendingEvent.eventId)}
+          autoDismiss={state.autoDismissEventTypes.includes(pendingEvent.eventId)}
           onDismiss={handleDismissEvent}
           onDismissNoPause={handleDismissEventNoPause}
         />
