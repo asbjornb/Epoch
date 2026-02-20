@@ -66,6 +66,15 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
             <div className="run-history-reason">{entry.collapseReason}</div>
           )}
 
+          {entry.lastActionId != null && entry.lastActionYearsRemaining != null && (
+            <div className="run-history-section">
+              <div className="run-history-section-label">Last Action</div>
+              <div className="run-history-last-action">
+                {getActionDef(entry.lastActionId)?.name ?? entry.lastActionId} — {entry.lastActionYearsRemaining} yr{entry.lastActionYearsRemaining !== 1 ? "s" : ""} remaining
+              </div>
+            </div>
+          )}
+
           <div className="run-history-section">
             <div className="run-history-section-label">Resources</div>
             <div className="run-history-stats">

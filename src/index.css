@@ -1593,6 +1593,10 @@ h1, h2, h3 {
   color: var(--danger);
 }
 
+.run-summary-last-action {
+  margin-bottom: 14px;
+}
+
 .run-summary-skills {
   margin-bottom: 16px;
 }
@@ -1822,6 +1826,11 @@ h1, h2, h3 {
   padding: 6px 8px;
   border-radius: 6px;
   line-height: 1.4;
+}
+
+.run-history-last-action {
+  font-size: 0.75rem;
+  color: var(--text-dim);
 }
 
 .run-history-section {

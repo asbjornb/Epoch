@@ -99,6 +99,8 @@ export interface RunHistoryEntry {
   resources: Resources;
   totalFoodSpoiled?: number;
   skillsGained?: Partial<Record<SkillName, number>>;
+  lastActionId?: ActionId;
+  lastActionYearsRemaining?: number;
 }
 
 export interface GameState {

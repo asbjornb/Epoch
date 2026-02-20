@@ -69,7 +69,7 @@ export function createInitialRun(): RunState {
   };
 }
 
-function getEffectiveDuration(
+export function getEffectiveDuration(
   baseDuration: number,
   skillLevel: number,
 ): number {
