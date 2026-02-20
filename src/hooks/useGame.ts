@@ -33,7 +33,8 @@ export type GameAction =
   | { type: "hard_reset" }
   | { type: "dismiss_summary" }
   | { type: "reset_auto_dismiss"; eventId: string }
-  | { type: "reset_all_auto_dismiss" };
+  | { type: "reset_all_auto_dismiss" }
+  | { type: "set_auto_dismiss_run_summary"; value: boolean };
 
 let uidCounter = 0;
 export function makeUid(): string {
@@ -119,6 +120,14 @@ function loadAutoDismissEventTypes(): string[] {
     if (saved) return JSON.parse(saved);
   } catch { /* ignore */ }
   return [];
+}
+
+function loadAutoDismissRunSummary(): boolean {
+  try {
+    const saved = localStorage.getItem("epoch_auto_dismiss_run_summary");
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return false;
 }
 
 function loadLastRunYear(): number {
@@ -233,6 +242,7 @@ function createInitialState(): GameState {
     encounteredDisasters: loadEncounteredDisasters(),
     seenEventTypes: loadSeenEventTypes(),
     autoDismissEventTypes: loadAutoDismissEventTypes(),
+    autoDismissRunSummary: loadAutoDismissRunSummary(),
     lastRunYear: loadLastRunYear(),
     skillsAtRunStart: cloneSkills(skills),
     runHistory: loadRunHistory(),
@@ -659,6 +669,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       localStorage.removeItem("epoch_encountered_disasters");
       localStorage.removeItem("epoch_seen_event_types");
       localStorage.removeItem("epoch_auto_dismiss_event_types");
+      localStorage.removeItem("epoch_auto_dismiss_run_summary");
       localStorage.removeItem("epoch_last_run_year");
       localStorage.removeItem("epoch_run_history");
       const skills = initialSkills();
@@ -671,6 +682,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         encounteredDisasters: [],
         seenEventTypes: [],
         autoDismissEventTypes: [],
+        autoDismissRunSummary: false,
         lastRunYear: 0,
         skillsAtRunStart: cloneSkills(skills),
         runHistory: [],
@@ -693,6 +705,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const autoDismissEventTypes: string[] = [];
       localStorage.setItem("epoch_auto_dismiss_event_types", JSON.stringify(autoDismissEventTypes));
       return { ...state, autoDismissEventTypes };
+    }
+
+    case "set_auto_dismiss_run_summary": {
+      localStorage.setItem("epoch_auto_dismiss_run_summary", JSON.stringify(action.value));
+      return { ...state, autoDismissRunSummary: action.value };
     }
 
     default:

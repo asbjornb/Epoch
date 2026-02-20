@@ -69,6 +69,11 @@ function App() {
     dispatch({ type: "dismiss_summary" });
   }, [dispatch]);
 
+  const handleDismissRunSummaryNoPause = useCallback(() => {
+    dispatch({ type: "set_auto_dismiss_run_summary", value: true });
+    dispatch({ type: "dismiss_summary" });
+  }, [dispatch]);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -171,7 +176,9 @@ function App() {
           lastRunYear={state.endedRunSnapshot.lastRunYear}
           totalRuns={state.endedRunSnapshot.totalRuns}
           autoRestarting={state.endedRunSnapshot.run.status === "collapsed" && state.endedRunSnapshot.run.autoRestart}
+          autoDismiss={state.autoDismissRunSummary}
           onDismiss={handleDismissRunSummary}
+          onDismissNoPause={handleDismissRunSummaryNoPause}
         />
       )}
 

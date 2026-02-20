@@ -137,6 +137,7 @@ export interface GameState {
   encounteredDisasters: string[];
   seenEventTypes: string[];
   autoDismissEventTypes: string[];
+  autoDismissRunSummary: boolean;
   lastRunYear: number;
   skillsAtRunStart: Skills;
   runHistory: RunHistoryEntry[];

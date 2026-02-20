@@ -1722,11 +1722,27 @@ h1, h2, h3 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 4px;
 }
 
 .run-summary-header h3 {
   font-size: 1.2rem;
+}
+
+.run-summary-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.run-summary-close:hover {
+  color: var(--text);
+  background: var(--bg-hover);
 }
 
 .run-summary-modal.victory .run-summary-header h3 {
@@ -1738,9 +1754,11 @@ h1, h2, h3 {
 }
 
 .run-summary-run {
+  display: block;
   font-family: "Crimson Pro", Georgia, serif;
   font-size: 0.8rem;
   color: var(--text-dim);
+  margin-bottom: 14px;
 }
 
 .run-summary-reason {
@@ -1843,6 +1861,88 @@ h1, h2, h3 {
 
 .run-summary-btn:hover {
   background: var(--accent-hover);
+}
+
+.run-summary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.run-summary-btn-secondary {
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  border: none;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.run-summary-btn-secondary:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+/* Run Summary Toast (auto-dismiss mode) */
+.run-summary-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 18px;
+  max-width: 420px;
+  width: calc(100% - 32px);
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  animation: slideDown 0.25s ease, fadeOut 0.4s ease 6.6s forwards;
+}
+
+.run-summary-toast.victory {
+  border-color: rgba(106, 143, 92, 0.5);
+}
+
+.run-summary-toast.collapse {
+  border-color: rgba(184, 92, 92, 0.5);
+}
+
+.run-summary-toast-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.run-summary-toast-title {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.run-summary-toast.victory .run-summary-toast-title {
+  color: var(--success);
+}
+
+.run-summary-toast.collapse .run-summary-toast-title {
+  color: var(--danger);
+}
+
+.run-summary-toast-detail {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-summary-toast-reason {
+  font-size: 0.75rem;
+  color: var(--text);
+  line-height: 1.4;
 }
 
 /* ===== Log Modal ===== */

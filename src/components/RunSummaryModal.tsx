@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { RunState, Skills, SkillName } from "../types/game.ts";
 import { getActionDef } from "../types/actions.ts";
 import { getEffectiveDuration } from "../engine/simulation.ts";
@@ -9,7 +10,9 @@ interface RunSummaryModalProps {
   lastRunYear: number;
   totalRuns: number;
   autoRestarting: boolean;
+  autoDismiss: boolean;
   onDismiss: () => void;
+  onDismissNoPause: () => void;
 }
 
 const SKILL_META: { id: SkillName; name: string; color: string }[] = [
@@ -26,10 +29,24 @@ export function RunSummaryModal({
   lastRunYear,
   totalRuns,
   autoRestarting,
+  autoDismiss,
   onDismiss,
+  onDismissNoPause,
 }: RunSummaryModalProps) {
+  const timerRef = useRef<number | null>(null);
   const isVictory = run.status === "victory";
   const yearDelta = lastRunYear > 0 ? run.year - lastRunYear : null;
+
+  useEffect(() => {
+    if (autoDismiss) {
+      timerRef.current = window.setTimeout(onDismiss, 7000);
+    }
+    return () => {
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [autoDismiss, onDismiss]);
 
   // Compute years remaining on the last action in progress
   let lastActionInfo: { name: string; yearsDone: number; totalDuration: number; yearsRemaining: number } | null = null;
@@ -71,6 +88,33 @@ export function RunSummaryModal({
     return { id, name, color, levelGain, xpGain, endLevel: end.level };
   }).filter((s) => s.levelGain > 0 || s.xpGain > 0);
 
+  if (autoDismiss) {
+    // Toast-style notification
+    return (
+      <div
+        className={`run-summary-toast ${isVictory ? "victory" : "collapse"}`}
+        onClick={onDismiss}
+      >
+        <div className="run-summary-toast-header">
+          <span className="run-summary-toast-title">
+            {isVictory ? "Victory!" : "Collapsed"}
+          </span>
+          <span className="run-summary-toast-detail">
+            Run #{totalRuns} — Year {run.year.toLocaleString()}
+            {yearDelta !== null && (
+              <span className={`run-summary-delta ${yearDelta >= 0 ? "positive" : "negative"}`}>
+                {" "}{yearDelta >= 0 ? "+" : ""}{yearDelta.toLocaleString()}
+              </span>
+            )}
+          </span>
+        </div>
+        {!isVictory && run.collapseReason && (
+          <p className="run-summary-toast-reason">{run.collapseReason}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="run-summary-overlay" onClick={onDismiss}>
       <div
@@ -79,8 +123,12 @@ export function RunSummaryModal({
       >
         <div className="run-summary-header">
           <h3>{isVictory ? "Victory!" : "Civilization Collapsed"}</h3>
-          <span className="run-summary-run">Run #{totalRuns}</span>
+          <button className="run-summary-close" onClick={onDismiss} aria-label="Close">
+            ✕
+          </button>
         </div>
+
+        <span className="run-summary-run">Run #{totalRuns}</span>
 
         {!isVictory && run.collapseReason && (
           <p className="run-summary-reason">{run.collapseReason}</p>
@@ -138,9 +186,14 @@ export function RunSummaryModal({
           </div>
         )}
 
-        <button className="run-summary-btn" onClick={onDismiss}>
-          {autoRestarting ? "Restarting..." : "Continue"}
-        </button>
+        <div className="run-summary-actions">
+          <button className="run-summary-btn" onClick={onDismiss}>
+            {autoRestarting ? "Restarting..." : "Continue"}
+          </button>
+          <button className="run-summary-btn-secondary" onClick={onDismissNoPause}>
+            Show as brief notification next time
+          </button>
+        </div>
       </div>
     </div>
   );

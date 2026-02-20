@@ -13,6 +13,7 @@ function createGameState(overrides?: Partial<GameState>): GameState {
     encounteredDisasters: [],
     seenEventTypes: [],
     autoDismissEventTypes: [],
+    autoDismissRunSummary: false,
     lastRunYear: 0,
     skillsAtRunStart: initialSkills(),
     runHistory: [],
