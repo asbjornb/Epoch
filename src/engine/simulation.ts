@@ -150,9 +150,9 @@ function getSmokehouseSpoilageMultiplier(smokehousesBuilt: number): number {
   return Math.pow(0.90, smokehousesBuilt);
 }
 
-/** Barracks XP bonus: each barracks grants +0.5 bonus military XP per training tick */
+/** Barracks XP bonus: each barracks grants +15% bonus military XP per training tick */
 function getBarracksXpBonus(barracksBuilt: number): number {
-  return barracksBuilt * 0.5;
+  return barracksBuilt * 0.15;
 }
 
 /** Calculate total defense from all sources */
