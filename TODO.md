@@ -2,9 +2,9 @@
 
 ## Achievements
 
-- [ ] Reaching raid grants an achievement and +10 starting food
-- [ ] Successfully completing a raid grants an achievement and +10 starting food
-- [ ] Reaching the ice age grants an achievement and +10 starting wood
+- [x] Reaching raid grants an achievement and +10 starting food
+- [x] Successfully completing a raid grants an achievement and +10 starting food
+- [x] Reaching the ice age grants an achievement and +10 starting wood
 
 ## Improvements
 

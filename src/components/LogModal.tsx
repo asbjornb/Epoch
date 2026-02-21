@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import type { LogEntry, RunHistoryEntry, SkillName } from "../types/game.ts";
+import type { LogEntry, RunHistoryEntry, SkillName, AchievementId } from "../types/game.ts";
 import { getActionDef } from "../types/actions.ts";
-import { getTotalDefense } from "../engine/simulation.ts";
+import { getTotalDefense, ACHIEVEMENT_DEFS } from "../engine/simulation.ts";
 import { BuildingsTechsSummary } from "./BuildingsTechsPanel.tsx";
 
 interface LogModalProps {
@@ -10,6 +10,7 @@ interface LogModalProps {
   totalRuns: number;
   bestRunYear: number;
   totalYearsPlayed: number;
+  achievements: AchievementId[];
   onClose: () => void;
 }
 
@@ -300,8 +301,28 @@ function StatisticsPanel({
   );
 }
 
-export function LogModal({ log, runHistory, totalRuns, bestRunYear, totalYearsPlayed, onClose }: LogModalProps) {
-  const [tab, setTab] = useState<"log" | "history" | "stats">("log");
+function AchievementsPanel({ achievements }: { achievements: AchievementId[] }) {
+  return (
+    <div className="achievements-panel">
+      {ACHIEVEMENT_DEFS.map((def) => {
+        const earned = achievements.includes(def.id);
+        return (
+          <div key={def.id} className={`achievement-card${earned ? " achievement-earned" : " achievement-locked"}`}>
+            <div className="achievement-name">{earned ? def.name : "???"}</div>
+            <div className="achievement-desc">{earned ? def.description : "Keep playing to discover this achievement."}</div>
+            {earned && <div className="achievement-bonus">{def.bonus}</div>}
+          </div>
+        );
+      })}
+      {achievements.length === 0 && (
+        <div className="log-empty">No achievements yet. Keep playing to earn rewards that carry across runs.</div>
+      )}
+    </div>
+  );
+}
+
+export function LogModal({ log, runHistory, totalRuns, bestRunYear, totalYearsPlayed, achievements, onClose }: LogModalProps) {
+  const [tab, setTab] = useState<"log" | "history" | "stats" | "achievements">("log");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -333,6 +354,12 @@ export function LogModal({ log, runHistory, totalRuns, bestRunYear, totalYearsPl
             >
               Statistics
             </button>
+            <button
+              className={`log-modal-tab${tab === "achievements" ? " active" : ""}`}
+              onClick={() => setTab("achievements")}
+            >
+              Achievements
+            </button>
           </div>
           <button className="log-modal-close" onClick={onClose}>
             ✕
@@ -358,6 +385,9 @@ export function LogModal({ log, runHistory, totalRuns, bestRunYear, totalYearsPl
           )}
           {tab === "stats" && (
             <StatisticsPanel runHistory={runHistory} totalRuns={totalRuns} bestRunYear={bestRunYear} totalYearsPlayed={totalYearsPlayed} />
+          )}
+          {tab === "achievements" && (
+            <AchievementsPanel achievements={achievements} />
           )}
         </div>
       </div>

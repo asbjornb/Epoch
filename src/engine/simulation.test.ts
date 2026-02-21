@@ -20,6 +20,7 @@ function createGameState(overrides?: Partial<GameState>): GameState {
     bestRunYear: 0,
     totalYearsPlayed: 0,
     endedRunSnapshot: null,
+    achievements: [],
     ...overrides,
   };
 }

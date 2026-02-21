@@ -8,7 +8,7 @@ import type {
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { initialSkills, isActionUnlocked } from "../engine/skills.ts";
-import { createInitialRun, tick, getEffectiveDuration } from "../engine/simulation.ts";
+import { createInitialRun, tick, getEffectiveDuration, getAchievementBonuses } from "../engine/simulation.ts";
 
 export type GameAction =
   | { type: "tick" }
@@ -236,6 +236,7 @@ export function validateSave(json: string): GameState | null {
       if (parsed.endedRunSnapshot === undefined) parsed.endedRunSnapshot = null;
       if (typeof parsed.bestRunYear !== "number") parsed.bestRunYear = 0;
       if (typeof parsed.totalYearsPlayed !== "number") parsed.totalYearsPlayed = 0;
+      if (parsed.achievements === undefined) parsed.achievements = [];
       return parsed as GameState;
     }
   } catch { /* ignore */ }
@@ -250,6 +251,7 @@ function createInitialState(): GameState {
     if (saved.run.status === "running") {
       saved.run.status = "paused";
     }
+    if (!saved.achievements) saved.achievements = [];
     return saved;
   }
 
@@ -271,6 +273,7 @@ function createInitialState(): GameState {
     bestRunYear: loadBestRunYear(),
     totalYearsPlayed: loadTotalYearsPlayed(),
     endedRunSnapshot: null,
+    achievements: [],
   };
 }
 
@@ -492,6 +495,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
       // Preserve queue and settings from previous run
       const newRun = createInitialRun();
+      // Apply achievement starting bonuses
+      const bonuses = getAchievementBonuses(state.achievements);
+      newRun.resources.food += bonuses.food;
+      newRun.resources.wood += bonuses.wood;
       newRun.queue = state.run.queue.map((e) => ({ ...e }));
       newRun.autoRestart = state.run.autoRestart;
       newRun.repeatLastAction = state.run.repeatLastAction;
@@ -822,6 +829,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         bestRunYear: 0,
         totalYearsPlayed: 0,
         endedRunSnapshot: null,
+        achievements: [],
       };
     }
 
