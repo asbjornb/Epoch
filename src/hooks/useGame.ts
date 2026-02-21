@@ -26,6 +26,7 @@ export type GameAction =
   | { type: "queue_remove"; uid: string }
   | { type: "queue_move"; uid: string; direction: "up" | "down" }
   | { type: "queue_set_repeat"; uid: string; repeat: number }
+  | { type: "queue_duplicate"; uid: string }
   | { type: "queue_clear" }
   | { type: "queue_load"; queue: QueueEntry[]; repeatLastAction: boolean }
   | { type: "force_collapse"; reason?: string }
@@ -717,6 +718,43 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       const run = { ...state.run, queue, currentQueueIndex, currentActionProgress };
+      return { ...state, run };
+    }
+
+    case "queue_duplicate": {
+      const entryIdx = state.run.queue.findIndex((e) => e.uid === action.uid);
+      if (entryIdx < 0) return state;
+      const original = state.run.queue[entryIdx];
+      // Research techs are single-use: don't duplicate
+      const oDef = getActionDef(original.actionId);
+      if (oDef?.category === "research") return state;
+
+      const duplicate: QueueEntry = {
+        uid: makeUid(),
+        actionId: original.actionId,
+        repeat: original.repeat,
+      };
+      const queue = [...state.run.queue];
+      queue.splice(entryIdx + 1, 0, duplicate);
+
+      let { currentQueueIndex } = state.run;
+
+      // If the run is active and the duplicate was inserted at or before the
+      // current logical position, shift the index forward by the duplicate's repeats.
+      if (state.run.status === "running" || state.run.status === "paused") {
+        let insertLogicalPos = 0;
+        let reachable = true;
+        for (let i = 0; i <= entryIdx; i++) {
+          const r = state.run.queue[i].repeat;
+          if (r === -1) { reachable = false; break; }
+          insertLogicalPos += r;
+        }
+        if (reachable && currentQueueIndex >= insertLogicalPos) {
+          currentQueueIndex += duplicate.repeat;
+        }
+      }
+
+      const run = { ...state.run, queue, currentQueueIndex };
       return { ...state, run };
     }
 

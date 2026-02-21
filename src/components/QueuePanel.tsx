@@ -106,6 +106,7 @@ function QueueItem({
   onSetRepeat,
   onMove,
   onRemove,
+  onDuplicate,
 }: {
   entry: QueueEntry;
   index: number;
@@ -119,6 +120,7 @@ function QueueItem({
   onSetRepeat: (uid: string, repeat: number) => void;
   onMove: (uid: string, direction: "up" | "down") => void;
   onRemove: (uid: string) => void;
+  onDuplicate: (uid: string) => void;
 }) {
   const def = getActionDef(entry.actionId);
   if (!def) return null;
@@ -201,6 +203,15 @@ function QueueItem({
           >
             ▼
           </button>
+          {def.category !== "research" && (
+            <button
+              className="queue-btn"
+              onClick={() => onDuplicate(entry.uid)}
+              title="Duplicate"
+            >
+              ⧉
+            </button>
+          )}
           <button
             className="queue-btn danger"
             onClick={() => onRemove(entry.uid)}
@@ -344,6 +355,8 @@ export function QueuePanel({
     dispatch({ type: "queue_move", uid, direction });
   const liveRemove = (uid: string) =>
     dispatch({ type: "queue_remove", uid });
+  const liveDuplicate = (uid: string) =>
+    dispatch({ type: "queue_duplicate", uid });
 
   // Draft queue callbacks
   const draftSetRepeat = (uid: string, repeat: number) =>
@@ -365,6 +378,17 @@ export function QueuePanel({
   };
   const draftRemove = (uid: string) =>
     onDraftQueueChange(draftQueue.filter((e) => e.uid !== uid));
+  const draftDuplicate = (uid: string) => {
+    const idx = draftQueue.findIndex((e) => e.uid === uid);
+    if (idx < 0) return;
+    const original = draftQueue[idx];
+    const eDef = getActionDef(original.actionId);
+    if (eDef?.category === "research") return;
+    const copy = { ...original, uid: `draft_${Date.now()}_${Math.random()}` };
+    const q = [...draftQueue];
+    q.splice(idx + 1, 0, copy);
+    onDraftQueueChange(q);
+  };
 
   const applyDraft = () => {
     const status = run.status;
@@ -566,6 +590,7 @@ export function QueuePanel({
                         onSetRepeat={liveSetRepeat}
                         onMove={liveMove}
                         onRemove={liveRemove}
+                        onDuplicate={liveDuplicate}
                       />
                     );
                   });
@@ -660,6 +685,7 @@ export function QueuePanel({
                       onSetRepeat={draftSetRepeat}
                       onMove={draftMove}
                       onRemove={draftRemove}
+                      onDuplicate={draftDuplicate}
                     />
                   );
                 })}
