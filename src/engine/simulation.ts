@@ -86,13 +86,14 @@ export function getEffectiveDuration(
   category: ActionCategory = "resource",
 ): number {
   const skillDuration = baseDuration * getSkillDurationMultiplier(skillLevel);
+  const safePopulation = Math.max(1, population);
   if (category === "building") {
-    return Math.max(1, Math.ceil(skillDuration / population));
+    return Math.max(1, Math.ceil(skillDuration / safePopulation));
   }
   if (category === "research") {
     // First 2 pop contribute linearly; additional pop has diminishing returns (pow 0.8)
     // Normalized so 2 pop = baseDuration (the baseline the durations were tuned for)
-    const effectiveWorkers = Math.min(population, 2) + Math.pow(Math.max(0, population - 2), 0.8);
+    const effectiveWorkers = Math.min(safePopulation, 2) + Math.pow(Math.max(0, safePopulation - 2), 0.8);
     return Math.max(1, Math.ceil(skillDuration * 2 / effectiveWorkers));
   }
   // Resource and military: population doesn't affect duration
