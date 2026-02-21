@@ -42,7 +42,7 @@ export const ACTION_DEFS: ActionDef[] = [
   {
     id: "build_barracks",
     name: "Build Barracks",
-    description: "Military quarters. Unlocks militia training. Each barracks ×1.10 training output. Costs 25 wood.",
+    description: "Military training grounds. Unlocks militia training. Each barracks ×1.15 military XP/tick. Costs 25 wood.",
     skill: "building",
     category: "building",
     baseDuration: 100,
@@ -62,7 +62,7 @@ export const ACTION_DEFS: ActionDef[] = [
   {
     id: "build_wall",
     name: "Build Wall",
-    description: "Fortify defenses. Each wall ×1.15 total defense. Costs 30 wood.",
+    description: "Fortify defenses. Each wall boosts defense with diminishing returns. Costs 30 wood.",
     skill: "building",
     category: "building",
     baseDuration: 160,
