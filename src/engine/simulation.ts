@@ -131,9 +131,13 @@ function getMilitaryStrengthMultiplier(researchedTechs: string[]): number {
   return researchedTechs.includes("research_tactics") ? 1.15 : 1.0;
 }
 
-/** Wall defense multiplier: each wall gives +15%, stacking multiplicatively */
+/** Wall defense multiplier: diminishing returns per wall (like granaries) */
 function getWallDefenseMultiplier(wallsBuilt: number): number {
-  return Math.pow(1.15, wallsBuilt);
+  let mult = 1.0;
+  for (let i = 0; i < wallsBuilt; i++) {
+    mult += 0.15 / Math.sqrt(1 + i);
+  }
+  return mult;
 }
 
 /** Fortification defense multiplier: +20% total defense when researched */
@@ -146,9 +150,9 @@ function getSmokehouseSpoilageMultiplier(smokehousesBuilt: number): number {
   return Math.pow(0.90, smokehousesBuilt);
 }
 
-/** Barracks training multiplier: each barracks gives +10% military training output */
-function getBarracksTrainingMultiplier(barracksBuilt: number): number {
-  return Math.pow(1.10, barracksBuilt);
+/** Barracks XP bonus: each barracks grants +0.5 bonus military XP per training tick */
+function getBarracksXpBonus(barracksBuilt: number): number {
+  return barracksBuilt * 0.5;
 }
 
 /** Calculate total defense from all sources */
@@ -347,8 +351,12 @@ export function tick(state: GameState): GameState {
           // Per-tick effects
           applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
 
-          // XP per tick
-          skills[def.skill] = addXp(skills[def.skill], 1);
+          // XP per tick (barracks grant bonus military XP during training/scouting)
+          let xpAmount = 1;
+          if (entry.actionId === "train_militia" || entry.actionId === "scout") {
+            xpAmount += getBarracksXpBonus(resources.barracksBuilt);
+          }
+          skills[def.skill] = addXp(skills[def.skill], xpAmount);
 
           if (foodNeeded <= 0) {
             run.lastActionPopulation = popAtTickStart;
@@ -540,7 +548,7 @@ function applyActionPerTick(
       resources.wood += 0.5 * outputMult;
       break;
     case "train_militia":
-      resources.militaryStrength += 0.2 * outputMult * getBarracksTrainingMultiplier(resources.barracksBuilt);
+      resources.militaryStrength += 0.2 * outputMult;
       break;
     case "scout":
       resources.militaryStrength += 0.05 * outputMult;
@@ -576,7 +584,7 @@ function applyActionCompletion(
       break;
     case "build_barracks":
       resources.barracksBuilt += 1;
-      log.push({ year, message: `Barracks built (${resources.barracksBuilt} total). Training output ×${getBarracksTrainingMultiplier(resources.barracksBuilt).toFixed(2)}.`, type: "info" });
+      log.push({ year, message: `Barracks built (${resources.barracksBuilt} total). Military XP +${getBarracksXpBonus(resources.barracksBuilt).toFixed(1)}/tick when training.`, type: "info" });
       break;
     case "build_wall":
       resources.wallsBuilt += 1;
@@ -829,8 +837,12 @@ export function simulateQueuePreview(
     // Per-tick effects
     applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
 
-    // XP
-    simSkills[def.skill] = addXp(simSkills[def.skill], 1);
+    // XP (barracks grant bonus military XP during training/scouting)
+    let simXpAmount = 1;
+    if (entry.actionId === "train_militia" || entry.actionId === "scout") {
+      simXpAmount += getBarracksXpBonus(resources.barracksBuilt);
+    }
+    simSkills[def.skill] = addXp(simSkills[def.skill], simXpAmount);
 
     actionProgress++;
 
