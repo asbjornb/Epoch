@@ -324,7 +324,9 @@ export function tick(state: GameState): GameState {
           // XP per tick
           skills[def.skill] = addXp(skills[def.skill], 1);
 
-          run.lastActionPopulation = popAtTickStart;
+          if (foodNeeded <= 0) {
+            run.lastActionPopulation = popAtTickStart;
+          }
           run.currentActionProgress++;
 
           // Action complete
