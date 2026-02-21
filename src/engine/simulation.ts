@@ -216,6 +216,7 @@ export function tick(state: GameState): GameState {
 
   if (run.status !== "running") return state;
 
+  const popAtTickStart = resources.population;
   run.year++;
 
   const isWinter = run.year >= WINTER_START && run.year <= WINTER_END;
@@ -323,9 +324,7 @@ export function tick(state: GameState): GameState {
           // XP per tick
           skills[def.skill] = addXp(skills[def.skill], 1);
 
-          if (resources.population > 0) {
-            run.lastActionPopulation = resources.population;
-          }
+          run.lastActionPopulation = popAtTickStart;
           run.currentActionProgress++;
 
           // Action complete
