@@ -122,7 +122,7 @@ export const ACTION_DEFS: ActionDef[] = [
     description: "Prepare and cure food for long-term storage. Converts up to 100 food into preserved food that spoils much slower.",
     skill: "farming",
     category: "resource",
-    baseDuration: 140,
+    baseDuration: 120,
     unlockLevel: 5,
     completionOnly: "building",
   },
