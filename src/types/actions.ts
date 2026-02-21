@@ -73,7 +73,7 @@ export const ACTION_DEFS: ActionDef[] = [
     description: "Water management for crops. +15% food from farming.",
     skill: "research",
     category: "research",
-    baseDuration: 160,
+    baseDuration: 150,
     unlockLevel: 0,
     requiredTech: "research_tools",
   },
@@ -83,7 +83,7 @@ export const ACTION_DEFS: ActionDef[] = [
     description: "Techniques to keep food longer. +100 food storage capacity.",
     skill: "research",
     category: "research",
-    baseDuration: 150,
+    baseDuration: 170,
     unlockLevel: 5,
   },
   {
