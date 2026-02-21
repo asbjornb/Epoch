@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import type { LogEntry, RunHistoryEntry, SkillName } from "../types/game.ts";
 import { getActionDef } from "../types/actions.ts";
 import { getTotalDefense } from "../engine/simulation.ts";
+import { BuildingsTechsSummary } from "./BuildingsTechsPanel.tsx";
 
 interface LogModalProps {
   log: LogEntry[];
@@ -72,9 +73,10 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
             <div className="run-history-stats">
               <Stat label="Pop" value={`${r.population}/${r.maxPopulation}`} />
               <Stat label="Defense" value={Math.floor(getTotalDefense(r))} />
-              <Stat label="Tech" value={r.researchedTechs?.length ?? 0} />
             </div>
           </div>
+
+          <BuildingsTechsSummary resources={r} />
 
           {hasWaste && (
             <div className="run-history-section">

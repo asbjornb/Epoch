@@ -274,10 +274,6 @@ function QueuePreviewDisplay({
     items.push({ label: "Defense", value: `${totalDef}` });
   }
 
-  if (r.researchedTechs.length > 0) {
-    items.push({ label: "Tech", value: `${r.researchedTechs.length} researched` });
-  }
-
   items.push({ label: "Storage", value: `${Math.floor(r.foodStorage)}` });
 
   return (
