@@ -124,7 +124,7 @@ export const ACTION_DEFS: ActionDef[] = [
     category: "resource",
     baseDuration: 140,
     unlockLevel: 5,
-    completionOnly: true,
+    completionOnly: "building",
   },
   {
     id: "winter_hunt",

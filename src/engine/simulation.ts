@@ -84,7 +84,7 @@ export function getEffectiveDuration(
   skillLevel: number,
   population: number = 1,
   category: ActionCategory = "resource",
-  completionOnly: boolean = false,
+  completionOnly?: "building" | "research",
 ): number {
   const skillDuration = baseDuration * getSkillDurationMultiplier(skillLevel);
   const safePopulation = Math.max(1, population);
@@ -97,9 +97,16 @@ export function getEffectiveDuration(
     const effectiveWorkers = Math.min(safePopulation, 2) + Math.pow(Math.max(0, safePopulation - 2), 0.8);
     return Math.max(1, Math.ceil(skillDuration * 2 / effectiveWorkers));
   }
-  // Completion-only resource/military actions: pop scales speed linearly, normalized to 2 pop
-  if (completionOnly) {
+  // Completion-only resource/military actions: pop scales duration instead of output
+  // Normalized so 2 pop = baseDuration (same speed as before this change)
+  if (completionOnly === "building") {
+    // Linear scaling
     return Math.max(1, Math.ceil(skillDuration * 2 / safePopulation));
+  }
+  if (completionOnly === "research") {
+    // Sublinear scaling (diminishing returns past 2 pop)
+    const effectiveWorkers = Math.min(safePopulation, 2) + Math.pow(Math.max(0, safePopulation - 2), 0.8);
+    return Math.max(1, Math.ceil(skillDuration * 2 / effectiveWorkers));
   }
   // Per-tick resource and military: population doesn't affect duration (it scales output instead)
   return Math.max(1, Math.round(skillDuration));
