@@ -323,6 +323,9 @@ export function tick(state: GameState): GameState {
           // XP per tick
           skills[def.skill] = addXp(skills[def.skill], 1);
 
+          if (resources.population > 0) {
+            run.lastActionPopulation = resources.population;
+          }
           run.currentActionProgress++;
 
           // Action complete
