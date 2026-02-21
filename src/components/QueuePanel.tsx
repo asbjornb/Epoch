@@ -244,17 +244,18 @@ function QueueItem({
 function QueuePreviewDisplay({
   queue,
   skills,
-  repeatLastAction,
+  encounteredDisasters,
   label,
 }: {
   queue: QueueEntry[];
   skills: GameState["skills"];
-  repeatLastAction: boolean;
+  encounteredDisasters: string[];
   label?: string;
 }) {
+  const hasSeenWinter = encounteredDisasters.includes("winter");
   const preview = useMemo(
-    () => simulateQueuePreview(queue, skills, repeatLastAction),
-    [queue, skills, repeatLastAction],
+    () => simulateQueuePreview(queue, skills, hasSeenWinter),
+    [queue, skills, hasSeenWinter],
   );
 
   if (queue.length === 0) return null;
@@ -276,6 +277,10 @@ function QueuePreviewDisplay({
 
   items.push({ label: "Storage", value: `${Math.floor(r.foodStorage)}` });
 
+  const collapseActionName = preview.collapseActionId
+    ? getActionDef(preview.collapseActionId)?.name
+    : undefined;
+
   return (
     <div className={`queue-preview${preview.collapsed ? " queue-preview-collapsed" : ""}`}>
       <div className="queue-preview-header">
@@ -285,6 +290,11 @@ function QueuePreviewDisplay({
           {preview.collapsed && " (collapses)"}
         </span>
       </div>
+      {preview.collapsed && collapseActionName && (
+        <div className="queue-preview-collapse-detail">
+          Starves during: {collapseActionName}
+        </div>
+      )}
       <div className="queue-preview-items">
         {items.map((item) => (
           <div key={item.label} className="queue-preview-item">
@@ -605,7 +615,7 @@ export function QueuePanel({
           <QueuePreviewDisplay
             queue={queue}
             skills={skills}
-            repeatLastAction={run.repeatLastAction}
+            encounteredDisasters={state.encounteredDisasters}
           />
 
           <div className="queue-actions-bar">
@@ -680,7 +690,7 @@ export function QueuePanel({
           <QueuePreviewDisplay
             queue={draftQueue}
             skills={skills}
-            repeatLastAction={draftRepeatLast}
+            encounteredDisasters={state.encounteredDisasters}
             label="Draft projection"
           />
 
