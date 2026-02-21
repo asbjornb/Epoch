@@ -5,6 +5,7 @@ import { QueuePanel, ActionPalette } from "./components/QueuePanel.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { SkillsPanel } from "./components/SkillsPanel.tsx";
 import { EventModal } from "./components/EventModal.tsx";
+import { WinterWinModal } from "./components/WinterWinModal.tsx";
 import { TutorialToast } from "./components/TutorialToast.tsx";
 import { RunSummaryModal } from "./components/RunSummaryModal.tsx";
 import { LogModal } from "./components/LogModal.tsx";
@@ -164,12 +165,20 @@ function App() {
 
       {/* Event popup modal */}
       {pendingEvent && (
-        <EventModal
-          event={pendingEvent}
-          autoDismiss={state.autoDismissEventTypes.includes(pendingEvent.eventId)}
-          onDismiss={handleDismissEvent}
-          onDismissNoPause={handleDismissEventNoPause}
-        />
+        pendingEvent.eventId === "winter_end" && !state.autoDismissEventTypes.includes("winter_end") ? (
+          <WinterWinModal
+            event={pendingEvent}
+            totalRuns={state.totalRuns + 1}
+            onDismiss={handleDismissEvent}
+          />
+        ) : (
+          <EventModal
+            event={pendingEvent}
+            autoDismiss={state.autoDismissEventTypes.includes(pendingEvent.eventId)}
+            onDismiss={handleDismissEvent}
+            onDismissNoPause={handleDismissEventNoPause}
+          />
+        )
       )}
 
       {/* Run summary modal (collapse/victory) */}
