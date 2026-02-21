@@ -587,8 +587,36 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "queue_remove": {
+      const entryIdx = state.run.queue.findIndex((e) => e.uid === action.uid);
+      if (entryIdx < 0) return state;
+      const removedEntry = state.run.queue[entryIdx];
       const queue = state.run.queue.filter((e) => e.uid !== action.uid);
-      const run = { ...state.run, queue };
+
+      let { currentQueueIndex, currentActionProgress } = state.run;
+
+      if ((state.run.status === "running" || state.run.status === "paused") && removedEntry.repeat !== -1) {
+        let entryLogicalStart = 0;
+        let reachable = true;
+        for (let i = 0; i < entryIdx; i++) {
+          const r = state.run.queue[i].repeat;
+          if (r === -1) { reachable = false; break; }
+          entryLogicalStart += r;
+        }
+
+        if (reachable) {
+          const entryEnd = entryLogicalStart + removedEntry.repeat;
+          if (currentQueueIndex >= entryEnd) {
+            // Past the removed entry: shift back
+            currentQueueIndex -= removedEntry.repeat;
+          } else if (currentQueueIndex >= entryLogicalStart) {
+            // Inside the removed entry: snap to its start (now the next entry)
+            currentQueueIndex = entryLogicalStart;
+            currentActionProgress = 0;
+          }
+        }
+      }
+
+      const run = { ...state.run, queue, currentQueueIndex, currentActionProgress };
       return { ...state, run };
     }
 
@@ -598,20 +626,90 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       if (idx < 0) return state;
       const swapIdx = action.direction === "up" ? idx - 1 : idx + 1;
       if (swapIdx < 0 || swapIdx >= queue.length) return state;
+
+      let { currentQueueIndex, currentActionProgress } = state.run;
+
+      // Before swap: find which entry+repeat the index currently points to
+      let activeEntryUid: string | null = null;
+      let repeatWithinEntry = 0;
+      if (state.run.status === "running" || state.run.status === "paused") {
+        let logicalPos = 0;
+        for (const entry of queue) {
+          const r = entry.repeat;
+          if (r === -1 || logicalPos + r > currentQueueIndex) {
+            activeEntryUid = entry.uid;
+            repeatWithinEntry = currentQueueIndex - logicalPos;
+            break;
+          }
+          logicalPos += r;
+        }
+      }
+
       [queue[idx], queue[swapIdx]] = [queue[swapIdx], queue[idx]];
-      const run = { ...state.run, queue };
+
+      // After swap: recompute index to keep pointing at the same entry+repeat
+      if (activeEntryUid) {
+        let logicalPos = 0;
+        for (const entry of queue) {
+          if (entry.uid === activeEntryUid) {
+            currentQueueIndex = logicalPos + repeatWithinEntry;
+            break;
+          }
+          const r = entry.repeat;
+          if (r === -1) break;
+          logicalPos += r;
+        }
+      }
+
+      const run = { ...state.run, queue, currentQueueIndex, currentActionProgress };
       return { ...state, run };
     }
 
     case "queue_set_repeat": {
-      const queue = state.run.queue.map((e) => {
-        if (e.uid !== action.uid) return e;
-        // Research techs are single-use: always repeat 1
-        const eDef = getActionDef(e.actionId);
-        if (eDef?.category === "research") return e;
-        return { ...e, repeat: action.repeat };
-      });
-      const run = { ...state.run, queue };
+      const entryIdx = state.run.queue.findIndex((e) => e.uid === action.uid);
+      if (entryIdx < 0) return state;
+      const entry = state.run.queue[entryIdx];
+      const eDef = getActionDef(entry.actionId);
+      if (eDef?.category === "research") return state;
+
+      const oldRepeat = entry.repeat;
+      const newRepeat = action.repeat;
+      if (oldRepeat === newRepeat) return state;
+
+      const queue = state.run.queue.map((e, i) =>
+        i === entryIdx ? { ...e, repeat: newRepeat } : e,
+      );
+
+      let { currentQueueIndex, currentActionProgress } = state.run;
+
+      // Adjust currentQueueIndex so it keeps pointing at the same action instance
+      if (state.run.status === "running" || state.run.status === "paused") {
+        let entryLogicalStart = 0;
+        let reachable = true;
+        for (let i = 0; i < entryIdx; i++) {
+          const r = state.run.queue[i].repeat;
+          if (r === -1) { reachable = false; break; } // infinite entry before; this one is unreachable
+          entryLogicalStart += r;
+        }
+
+        if (reachable && oldRepeat !== -1 && newRepeat !== -1) {
+          const entryEnd = entryLogicalStart + oldRepeat;
+          if (currentQueueIndex >= entryEnd) {
+            // Already past this entry: shift index by the delta
+            currentQueueIndex += newRepeat - oldRepeat;
+          } else if (currentQueueIndex >= entryLogicalStart && newRepeat < oldRepeat) {
+            // Currently inside this entry and reducing repeats
+            const repeatWithinEntry = currentQueueIndex - entryLogicalStart;
+            if (repeatWithinEntry >= newRepeat) {
+              // Current position no longer exists; advance to next entry
+              currentQueueIndex = entryLogicalStart + newRepeat;
+              currentActionProgress = 0;
+            }
+          }
+        }
+      }
+
+      const run = { ...state.run, queue, currentQueueIndex, currentActionProgress };
       return { ...state, run };
     }
 
