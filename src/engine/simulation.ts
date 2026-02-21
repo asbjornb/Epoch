@@ -150,9 +150,9 @@ function getSmokehouseSpoilageMultiplier(smokehousesBuilt: number): number {
   return Math.pow(0.90, smokehousesBuilt);
 }
 
-/** Barracks XP bonus: each barracks grants +15% bonus military XP per training tick */
-function getBarracksXpBonus(barracksBuilt: number): number {
-  return barracksBuilt * 0.15;
+/** Barracks XP multiplier: each barracks grants ×1.15 military XP per training tick, stacking multiplicatively */
+function getBarracksXpMultiplier(barracksBuilt: number): number {
+  return Math.pow(1.15, barracksBuilt);
 }
 
 /** Calculate total defense from all sources */
@@ -351,10 +351,10 @@ export function tick(state: GameState): GameState {
           // Per-tick effects
           applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
 
-          // XP per tick (barracks grant bonus military XP during training/scouting)
+          // XP per tick (barracks multiply military XP during training/scouting)
           let xpAmount = 1;
           if (entry.actionId === "train_militia" || entry.actionId === "scout") {
-            xpAmount += getBarracksXpBonus(resources.barracksBuilt);
+            xpAmount *= getBarracksXpMultiplier(resources.barracksBuilt);
           }
           skills[def.skill] = addXp(skills[def.skill], xpAmount);
 
@@ -584,7 +584,7 @@ function applyActionCompletion(
       break;
     case "build_barracks":
       resources.barracksBuilt += 1;
-      log.push({ year, message: `Barracks built (${resources.barracksBuilt} total). Military XP +${getBarracksXpBonus(resources.barracksBuilt).toFixed(1)}/tick when training.`, type: "info" });
+      log.push({ year, message: `Barracks built (${resources.barracksBuilt} total). Military XP ×${getBarracksXpMultiplier(resources.barracksBuilt).toFixed(2)} when training.`, type: "info" });
       break;
     case "build_wall":
       resources.wallsBuilt += 1;
@@ -837,10 +837,10 @@ export function simulateQueuePreview(
     // Per-tick effects
     applyActionPerTick(entry.actionId, resources, outputMult, isWinter);
 
-    // XP (barracks grant bonus military XP during training/scouting)
+    // XP (barracks multiply military XP during training/scouting)
     let simXpAmount = 1;
     if (entry.actionId === "train_militia" || entry.actionId === "scout") {
-      simXpAmount += getBarracksXpBonus(resources.barracksBuilt);
+      simXpAmount *= getBarracksXpMultiplier(resources.barracksBuilt);
     }
     simSkills[def.skill] = addXp(simSkills[def.skill], simXpAmount);
 
