@@ -155,6 +155,29 @@ function getBarracksXpMultiplier(barracksBuilt: number): number {
   return Math.pow(1.15, barracksBuilt);
 }
 
+/** Get the number of existing buildings of a given type */
+export function getBuildingCount(resources: Resources, actionId: string): number {
+  switch (actionId) {
+    case "build_hut":
+      return Math.max(0, Math.round((resources.maxPopulation - INITIAL_MAX_POP) / 3));
+    case "build_granary":
+      return resources.granariesBuilt;
+    case "build_smokehouse":
+      return resources.smokehousesBuilt;
+    case "build_barracks":
+      return resources.barracksBuilt;
+    case "build_wall":
+      return resources.wallsBuilt;
+    default:
+      return 0;
+  }
+}
+
+/** Building cost scales +50% per existing building of the same type */
+export function getScaledWoodCost(baseCost: number, existingCount: number): number {
+  return Math.ceil(baseCost * (1 + existingCount * 0.5));
+}
+
 /** Calculate total defense from all sources */
 export function getTotalDefense(resources: Resources): number {
   const tacticsMult = getMilitaryStrengthMultiplier(resources.researchedTechs);
@@ -333,19 +356,20 @@ export function tick(state: GameState): GameState {
         const techMult = getTechMultiplierForAction(resources.researchedTechs, entry.actionId);
         const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
 
-        // Check wood cost at start of action
-        if (run.currentActionProgress === 0 && def.woodCost && def.woodCost > resources.wood) {
+        // Check wood cost at start of action (scaled for buildings)
+        const scaledCost = def.woodCost ? getScaledWoodCost(def.woodCost, getBuildingCount(resources, entry.actionId)) : 0;
+        if (run.currentActionProgress === 0 && scaledCost > 0 && scaledCost > resources.wood) {
           log.push({
             year: run.year,
-            message: `Cannot ${def.name}: need ${def.woodCost} wood (have ${Math.floor(resources.wood)}).`,
+            message: `Cannot ${def.name}: need ${scaledCost} wood (have ${Math.floor(resources.wood)}).`,
             type: "warning",
           });
           run.currentActionProgress = 0;
           run.currentQueueIndex++;
         } else {
           // Deduct wood at start of action
-          if (run.currentActionProgress === 0 && def.woodCost) {
-            resources.wood -= def.woodCost;
+          if (run.currentActionProgress === 0 && scaledCost > 0) {
+            resources.wood -= scaledCost;
           }
 
           // Per-tick effects
@@ -823,15 +847,16 @@ export function simulateQueuePreview(
     const popMult = getPopulationOutputMultiplier(resources.population, def.category);
     const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
 
-    // Wood cost check at start of action
-    if (actionProgress === 0 && def.woodCost) {
-      if (def.woodCost > resources.wood) {
+    // Wood cost check at start of action (scaled for buildings)
+    const previewScaledCost = def.woodCost ? getScaledWoodCost(def.woodCost, getBuildingCount(resources, entry.actionId)) : 0;
+    if (actionProgress === 0 && previewScaledCost > 0) {
+      if (previewScaledCost > resources.wood) {
         // Skip this action
         actionProgress = 0;
         queueLogicalIndex++;
         continue;
       }
-      resources.wood -= def.woodCost;
+      resources.wood -= previewScaledCost;
     }
 
     // Per-tick effects

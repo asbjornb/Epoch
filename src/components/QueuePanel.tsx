@@ -6,7 +6,7 @@ import type {
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { isActionUnlocked } from "../engine/skills.ts";
-import { simulateQueuePreview, getEffectiveDuration, getTotalDefense } from "../engine/simulation.ts";
+import { simulateQueuePreview, getEffectiveDuration, getTotalDefense, getBuildingCount, getScaledWoodCost } from "../engine/simulation.ts";
 import type { GameAction } from "../hooks/useGame.ts";
 
 
@@ -83,7 +83,7 @@ export function ActionPalette({
               <span className="palette-action-name">{a.name}</span>
               <span className="palette-action-dur">{dur} years</span>
               {a.woodCost && (
-                <span className="palette-action-cost">{a.woodCost} wood</span>
+                <span className="palette-action-cost">{getScaledWoodCost(a.woodCost, getBuildingCount(state.run.resources, a.id))} wood</span>
               )}
             </button>
           );
