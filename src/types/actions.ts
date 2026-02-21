@@ -75,7 +75,7 @@ export const ACTION_DEFS: ActionDef[] = [
     description: "Raise military strength. Needed to repel raiders.",
     skill: "military",
     category: "military",
-    baseDuration: 150,
+    baseDuration: 110,
     unlockLevel: 0,
     requiredBarracks: 1,
   },
