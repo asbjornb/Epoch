@@ -148,6 +148,22 @@ function loadRunHistory(): RunHistoryEntry[] {
   return [];
 }
 
+function loadBestRunYear(): number {
+  try {
+    const saved = localStorage.getItem("epoch_best_run_year");
+    if (saved) return parseInt(saved, 10);
+  } catch { /* ignore */ }
+  return 0;
+}
+
+function loadTotalYearsPlayed(): number {
+  try {
+    const saved = localStorage.getItem("epoch_total_years_played");
+    if (saved) return parseInt(saved, 10);
+  } catch { /* ignore */ }
+  return 0;
+}
+
 function cloneSkills(skills: GameState["skills"]): GameState["skills"] {
   return {
     farming: { ...skills.farming },
@@ -192,6 +208,9 @@ export function loadGameState(): GameState | null {
         localStorage.removeItem(SAVE_KEY);
         return null;
       }
+      // Migrate older saves missing new fields
+      if (typeof parsed.bestRunYear !== "number") parsed.bestRunYear = 0;
+      if (typeof parsed.totalYearsPlayed !== "number") parsed.totalYearsPlayed = 0;
       return parsed;
     }
   } catch { /* ignore */ }
@@ -216,6 +235,8 @@ export function validateSave(json: string): GameState | null {
     ) {
       // Ensure new fields exist for saves from older versions
       if (parsed.endedRunSnapshot === undefined) parsed.endedRunSnapshot = null;
+      if (typeof parsed.bestRunYear !== "number") parsed.bestRunYear = 0;
+      if (typeof parsed.totalYearsPlayed !== "number") parsed.totalYearsPlayed = 0;
       if (parsed.achievements === undefined) parsed.achievements = [];
       return parsed as GameState;
     }
@@ -250,6 +271,8 @@ function createInitialState(): GameState {
     lastRunYear: loadLastRunYear(),
     skillsAtRunStart: cloneSkills(skills),
     runHistory: loadRunHistory(),
+    bestRunYear: loadBestRunYear(),
+    totalYearsPlayed: loadTotalYearsPlayed(),
     endedRunSnapshot: null,
     achievements: [],
   };
@@ -451,6 +474,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const runHistory = [historyEntry, ...state.runHistory].slice(0, 10);
       localStorage.setItem("epoch_run_history", JSON.stringify(runHistory));
 
+      // Update all-time year stats
+      const bestRunYear = Math.max(state.bestRunYear, state.run.year);
+      localStorage.setItem("epoch_best_run_year", String(bestRunYear));
+      const totalYearsPlayed = state.totalYearsPlayed + state.run.year;
+      localStorage.setItem("epoch_total_years_played", String(totalYearsPlayed));
+
       // Tally winter years survived this run
       const winterYearsThisRun = Math.max(0, Math.min(state.run.year, WINTER_END) - WINTER_START);
       const totalWinterYearsSurvived = (state.totalWinterYearsSurvived || 0) + winterYearsThisRun;
@@ -482,6 +511,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         unlockedActions,
         lastRunYear,
         runHistory,
+        bestRunYear,
+        totalYearsPlayed,
       };
     }
 
@@ -817,6 +848,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       localStorage.removeItem("epoch_auto_dismiss_run_summary");
       localStorage.removeItem("epoch_last_run_year");
       localStorage.removeItem("epoch_run_history");
+      localStorage.removeItem("epoch_best_run_year");
+      localStorage.removeItem("epoch_total_years_played");
       const skills = initialSkills();
       return {
         skills,
@@ -831,6 +864,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         lastRunYear: 0,
         skillsAtRunStart: cloneSkills(skills),
         runHistory: [],
+        bestRunYear: 0,
+        totalYearsPlayed: 0,
         endedRunSnapshot: null,
         achievements: [],
       };

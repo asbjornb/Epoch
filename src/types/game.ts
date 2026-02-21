@@ -153,6 +153,10 @@ export interface GameState {
   lastRunYear: number;
   skillsAtRunStart: Skills;
   runHistory: RunHistoryEntry[];
+  /** Best year ever reached across all runs. */
+  bestRunYear: number;
+  /** Sum of final years across all completed runs. */
+  totalYearsPlayed: number;
   /** Present while the run-summary modal should be visible. */
   endedRunSnapshot: EndedRunSnapshot | null;
   achievements: AchievementId[];
