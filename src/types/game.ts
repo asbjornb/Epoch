@@ -67,6 +67,7 @@ export interface RunState {
   queue: QueueEntry[];
   currentQueueIndex: number;
   currentActionProgress: number; // ticks into current action
+  lastActionPopulation?: number; // population when action last progressed (for display on collapse)
   status: "idle" | "running" | "paused" | "collapsed" | "victory";
   log: LogEntry[];
   collapseReason?: string;
