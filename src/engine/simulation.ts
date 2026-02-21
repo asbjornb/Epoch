@@ -6,6 +6,7 @@ import type {
   QueueEntry,
   EventPopup,
   ActionCategory,
+  AchievementId,
 } from "../types/game.ts";
 import { getActionDef } from "../types/actions.ts";
 import {
@@ -45,6 +46,29 @@ export const DISASTERS: DisasterInfo[] = [
   { id: "raider", name: "Raider Era", year: RAIDER_YEAR, color: "#8b5555" },
   { id: "winter", name: "Great Cold", year: WINTER_START, color: "#7a9aad" },
 ];
+
+export interface AchievementDef {
+  id: AchievementId;
+  name: string;
+  description: string;
+  bonus: string;
+}
+
+export const ACHIEVEMENT_DEFS: AchievementDef[] = [
+  { id: "reach_raid", name: "The Raider Era", description: "Reach year 1,500", bonus: "+10 starting food" },
+  { id: "survive_raid", name: "Raiders Repelled", description: "Survive the raider attack", bonus: "+10 starting food" },
+  { id: "reach_winter", name: "The Great Cold", description: "Reach year 4,000", bonus: "+10 starting wood" },
+];
+
+/** Calculate starting resource bonuses from earned achievements. */
+export function getAchievementBonuses(achievements: AchievementId[]): { food: number; wood: number } {
+  let food = 0;
+  let wood = 0;
+  if (achievements.includes("reach_raid")) food += 10;
+  if (achievements.includes("survive_raid")) food += 10;
+  if (achievements.includes("reach_winter")) wood += 10;
+  return { food, wood };
+}
 
 export function createInitialResources(): Resources {
   return {
@@ -264,6 +288,7 @@ export function tick(state: GameState): GameState {
   const skills = { ...state.skills };
   const log: LogEntry[] = [...run.log];
   const pendingEvents: EventPopup[] = [...run.pendingEvents];
+  let achievements = state.achievements;
 
   if (run.status !== "running") return state;
 
@@ -434,6 +459,11 @@ export function tick(state: GameState): GameState {
 
   // Raider event - walls and fortification multiply total defense
   if (run.year === RAIDER_YEAR) {
+    // Achievement: reach the raid
+    if (!achievements.includes("reach_raid")) {
+      achievements = [...achievements, "reach_raid"];
+      log.push({ year: run.year, message: "Achievement: The Raider Era — future runs start with +10 food.", type: "success" });
+    }
     const totalDefense = getTotalDefense(resources);
     const baseMilitary = Math.floor(resources.militaryStrength);
     const totalMult = (getMilitaryStrengthMultiplier(resources.researchedTechs) * getWallDefenseMultiplier(resources.wallsBuilt) * getFortificationMultiplier(resources.researchedTechs));
@@ -459,6 +489,11 @@ export function tick(state: GameState): GameState {
       skills.military = addXp(skills.military, 50);
       const raidMsg = `Raiders repelled! Defense held (${Math.floor(totalDefense)}/${RAIDER_STRENGTH_REQUIRED}). Gained ${foodBonus} food, ${woodBonus} wood, and military XP.`;
       log.push({ year: run.year, message: raidMsg, type: "success" });
+      // Achievement: survive the raid
+      if (!achievements.includes("survive_raid")) {
+        achievements = [...achievements, "survive_raid"];
+        log.push({ year: run.year, message: "Achievement: Raiders Repelled — future runs start with +10 food.", type: "success" });
+      }
       const firstTime = !state.seenEventTypes.includes("raider_survived");
       const shouldPause = !state.autoDismissEventTypes.includes("raider_survived");
       pendingEvents.push({
@@ -478,6 +513,11 @@ export function tick(state: GameState): GameState {
 
   // Winter event
   if (run.year === WINTER_START) {
+    // Achievement: reach the ice age
+    if (!achievements.includes("reach_winter")) {
+      achievements = [...achievements, "reach_winter"];
+      log.push({ year: run.year, message: "Achievement: The Great Cold — future runs start with +10 wood.", type: "success" });
+    }
     const winterSpoilage = calculateSpoilage(resources.food, resources.foodStorage);
     const preservedNote = resources.preservedFood > 0 ? ` Preserved: ${Math.floor(resources.preservedFood)}.` : "";
     const winterMsg = `The Great Cold begins. Farming disabled, food consumption doubled. Food: ${Math.floor(resources.food)} (spoilage: ${winterSpoilage.toFixed(1)}/yr).${preservedNote}`;
@@ -553,7 +593,7 @@ export function tick(state: GameState): GameState {
     }
   }
 
-  return { ...state, run, skills, encounteredDisasters };
+  return { ...state, run, skills, encounteredDisasters, achievements };
 }
 
 function applyActionPerTick(

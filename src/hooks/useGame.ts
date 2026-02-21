@@ -8,7 +8,7 @@ import type {
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { initialSkills, isActionUnlocked } from "../engine/skills.ts";
-import { createInitialRun, tick, getEffectiveDuration } from "../engine/simulation.ts";
+import { createInitialRun, tick, getEffectiveDuration, getAchievementBonuses } from "../engine/simulation.ts";
 
 export type GameAction =
   | { type: "tick" }
@@ -215,6 +215,7 @@ export function validateSave(json: string): GameState | null {
     ) {
       // Ensure new fields exist for saves from older versions
       if (parsed.endedRunSnapshot === undefined) parsed.endedRunSnapshot = null;
+      if (parsed.achievements === undefined) parsed.achievements = [];
       return parsed as GameState;
     }
   } catch { /* ignore */ }
@@ -229,6 +230,7 @@ function createInitialState(): GameState {
     if (saved.run.status === "running") {
       saved.run.status = "paused";
     }
+    if (!saved.achievements) saved.achievements = [];
     return saved;
   }
 
@@ -248,6 +250,7 @@ function createInitialState(): GameState {
     skillsAtRunStart: cloneSkills(skills),
     runHistory: loadRunHistory(),
     endedRunSnapshot: null,
+    achievements: [],
   };
 }
 
@@ -463,6 +466,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
       // Preserve queue and settings from previous run
       const newRun = createInitialRun();
+      // Apply achievement starting bonuses
+      const bonuses = getAchievementBonuses(state.achievements);
+      newRun.resources.food += bonuses.food;
+      newRun.resources.wood += bonuses.wood;
       newRun.queue = state.run.queue.map((e) => ({ ...e }));
       newRun.autoRestart = state.run.autoRestart;
       newRun.repeatLastAction = state.run.repeatLastAction;
@@ -787,6 +794,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         skillsAtRunStart: cloneSkills(skills),
         runHistory: [],
         endedRunSnapshot: null,
+        achievements: [],
       };
     }
 

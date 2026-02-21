@@ -138,6 +138,8 @@ export interface EndedRunSnapshot {
   totalRuns: number;
 }
 
+export type AchievementId = "reach_raid" | "survive_raid" | "reach_winter";
+
 export interface GameState {
   skills: Skills;
   run: RunState;
@@ -153,4 +155,5 @@ export interface GameState {
   runHistory: RunHistoryEntry[];
   /** Present while the run-summary modal should be visible. */
   endedRunSnapshot: EndedRunSnapshot | null;
+  achievements: AchievementId[];
 }
