@@ -52,6 +52,9 @@ export interface ActionDef {
   requiredTech?: ActionId;
   /** Minimum walls built before this action unlocks */
   requiredWalls?: number;
+  /** Action only produces results on completion; duration scales with pop instead of output.
+   *  "building" = linear scaling, "research" = sublinear (diminishing returns past 2 pop). */
+  completionOnly?: "building" | "research";
 }
 
 export interface QueueEntry {

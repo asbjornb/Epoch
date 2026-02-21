@@ -84,6 +84,7 @@ export function getEffectiveDuration(
   skillLevel: number,
   population: number = 1,
   category: ActionCategory = "resource",
+  completionOnly?: "building" | "research",
 ): number {
   const skillDuration = baseDuration * getSkillDurationMultiplier(skillLevel);
   const safePopulation = Math.max(1, population);
@@ -96,7 +97,18 @@ export function getEffectiveDuration(
     const effectiveWorkers = Math.min(safePopulation, 2) + Math.pow(Math.max(0, safePopulation - 2), 0.8);
     return Math.max(1, Math.ceil(skillDuration * 2 / effectiveWorkers));
   }
-  // Resource and military: population doesn't affect duration
+  // Completion-only resource/military actions: pop scales duration instead of output
+  // Normalized so 2 pop = baseDuration (same speed as before this change)
+  if (completionOnly === "building") {
+    // Linear scaling
+    return Math.max(1, Math.ceil(skillDuration * 2 / safePopulation));
+  }
+  if (completionOnly === "research") {
+    // Sublinear scaling (diminishing returns past 2 pop)
+    const effectiveWorkers = Math.min(safePopulation, 2) + Math.pow(Math.max(0, safePopulation - 2), 0.8);
+    return Math.max(1, Math.ceil(skillDuration * 2 / effectiveWorkers));
+  }
+  // Per-tick resource and military: population doesn't affect duration (it scales output instead)
   return Math.max(1, Math.round(skillDuration));
 }
 
@@ -298,7 +310,7 @@ export function tick(state: GameState): GameState {
         run.currentQueueIndex++;
       } else {
         const skillLevel = skills[def.skill].level;
-        const duration = getEffectiveDuration(def.baseDuration, skillLevel, resources.population, def.category);
+        const duration = getEffectiveDuration(def.baseDuration, skillLevel, resources.population, def.category, def.completionOnly);
         const popMult = getPopulationOutputMultiplier(resources.population, def.category);
         const techMult = getTechMultiplierForAction(resources.researchedTechs, entry.actionId);
         const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
@@ -770,7 +782,7 @@ export function simulateQueuePreview(
     // Multipliers
     const techMult = getTechMultiplierForAction(resources.researchedTechs, entry.actionId);
     const skillLevel = simSkills[def.skill].level;
-    const duration = getEffectiveDuration(def.baseDuration, skillLevel, resources.population, def.category);
+    const duration = getEffectiveDuration(def.baseDuration, skillLevel, resources.population, def.category, def.completionOnly);
     const popMult = getPopulationOutputMultiplier(resources.population, def.category);
     const outputMult = getSkillOutputMultiplier(skillLevel) * techMult * popMult;
 
