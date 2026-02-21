@@ -70,7 +70,7 @@ export function RunSummaryModal({
       if (def) {
         const skillLevel = skills[def.skill].level;
         const pop = run.lastActionPopulation ?? run.resources.population;
-        const duration = getEffectiveDuration(def.baseDuration, skillLevel, pop, def.category);
+        const duration = getEffectiveDuration(def.baseDuration, skillLevel, pop, def.category, def.completionOnly);
         lastActionInfo = {
           name: def.name,
           yearsDone: run.currentActionProgress,

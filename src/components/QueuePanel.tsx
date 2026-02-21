@@ -65,6 +65,7 @@ export function ActionPalette({
             state.skills[a.skill].level,
             state.run.resources.population,
             a.category,
+            a.completionOnly,
           );
           // Research techs are single-use: disabled if already queued
           const isResearch = a.category === "research";
@@ -326,6 +327,7 @@ export function QueuePanel({
       skills[def.skill].level,
       run.resources.population,
       def.category,
+      def.completionOnly,
     );
   };
 
