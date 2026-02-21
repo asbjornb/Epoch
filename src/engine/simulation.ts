@@ -725,18 +725,20 @@ export interface QueuePreview {
   yearsUsed: number;
   /** true if population hit 0 during simulation */
   collapsed: boolean;
+  /** The action that was active when the simulation predicted collapse */
+  collapseActionId?: string;
 }
 
 /**
  * Simulate the queue from a fresh run to project resource outcomes.
- * Includes food consumption, pop growth, spoilage, winter effects.
+ * Includes food consumption, pop growth, spoilage, and optionally winter effects.
  * Does NOT include event pauses or collapse-ending logic — just resources.
- * Caps infinite-repeat entries at enough ticks to fill the remaining epoch.
+ * Only simulates the finite queue (ignores repeatLastAction).
  */
 export function simulateQueuePreview(
   queue: QueueEntry[],
   skills: GameState["skills"],
-  repeatLastAction: boolean = true,
+  hasSeenWinter: boolean = true,
 ): QueuePreview {
   if (queue.length === 0) {
     return { resources: createInitialResources(), yearsUsed: 0, collapsed: false };
@@ -754,6 +756,7 @@ export function simulateQueuePreview(
   let queueLogicalIndex = 0;
   let actionProgress = 0;
   let collapsed = false;
+  let collapseActionId: string | undefined;
 
   // Expand queue into a flat action list (cap infinite at remaining years worth)
   // Instead, simulate tick-by-tick with the same queue index logic
@@ -771,13 +774,9 @@ export function simulateQueuePreview(
       logicalPos += reps;
     }
 
-    // If queue is exhausted, repeat last action or stop
+    // Queue exhausted — stop simulation (don't repeat last action for preview)
     if (arrayIdx === -1) {
-      if (repeatLastAction) {
-        arrayIdx = queue.length - 1;
-      } else {
-        break;
-      }
+      break;
     }
 
     const entry = queue[arrayIdx];
@@ -785,7 +784,7 @@ export function simulateQueuePreview(
     if (!def) break;
 
     year++;
-    const isWinter = year >= WINTER_START && year <= WINTER_END;
+    const isWinter = hasSeenWinter && year >= WINTER_START && year <= WINTER_END;
 
     // Food consumption — eat from normal food first, then preserved
     const foodPerPop = isWinter ? WINTER_FOOD_PER_POP : FOOD_PER_POP;
@@ -810,6 +809,7 @@ export function simulateQueuePreview(
 
     if (resources.population <= 0) {
       collapsed = true;
+      collapseActionId = entry.actionId;
       break;
     }
 
@@ -824,7 +824,7 @@ export function simulateQueuePreview(
       resources.preservedFood -= preservedSpoilagePreview;
     }
 
-    // Pop growth
+    // Pop growth (not during winter)
     if (
       !isWinter &&
       resources.population < resources.maxPopulation &&
@@ -879,5 +879,5 @@ export function simulateQueuePreview(
     }
   }
 
-  return { resources, yearsUsed: year, collapsed };
+  return { resources, yearsUsed: year, collapsed, collapseActionId };
 }

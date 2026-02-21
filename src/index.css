@@ -898,6 +898,13 @@ h1, h2, h3 {
   color: var(--danger);
 }
 
+.queue-preview-collapse-detail {
+  font-size: 0.72rem;
+  color: var(--danger);
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
+
 /* Queue bottom actions */
 .queue-actions-bar {
   display: flex;
