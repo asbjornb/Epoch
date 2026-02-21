@@ -18,6 +18,7 @@ function createGameState(overrides?: Partial<GameState>): GameState {
     skillsAtRunStart: initialSkills(),
     runHistory: [],
     endedRunSnapshot: null,
+    achievements: [],
     ...overrides,
   };
 }

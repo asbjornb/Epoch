@@ -2876,3 +2876,46 @@ h1, h2, h3 {
 .winter-win-btn:hover {
   background: var(--accent-hover);
 }
+
+/* Achievements panel */
+.achievements-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.achievement-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.achievement-earned {
+  border-color: var(--success);
+}
+
+.achievement-locked {
+  opacity: 0.5;
+}
+
+.achievement-name {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.achievement-desc {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.achievement-bonus {
+  font-size: 0.72rem;
+  color: var(--success);
+  font-weight: 600;
+}
