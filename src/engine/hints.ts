@@ -19,7 +19,7 @@ export function getSkillHint(state: GameState): string {
   }
 
   // Only farming unlocked — need to fill food storage
-  const basicUnlocks: ActionId[] = ["gather_wood", "train_militia", "research_tools"];
+  const basicUnlocks: ActionId[] = ["gather_wood", "research_tools"];
   const hasBasicUnlocks = basicUnlocks.every((id) => unlockedActions.includes(id));
 
   if (!hasBasicUnlocks) {

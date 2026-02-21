@@ -80,7 +80,7 @@ function loadUnlockedActions(): ActionId[] {
 }
 
 /** Check if any new actions should be unlocked based on current skills and researched techs */
-function computeSkillUnlocks(current: ActionId[], skills: GameState["skills"], researchedTechs?: ActionId[], wallsBuilt?: number): ActionId[] {
+function computeSkillUnlocks(current: ActionId[], skills: GameState["skills"], researchedTechs?: ActionId[], wallsBuilt?: number, barracksBuilt?: number): ActionId[] {
   let updated = current;
   for (const def of ACTION_DEFS) {
     if (!updated.includes(def.id)) {
@@ -88,8 +88,9 @@ function computeSkillUnlocks(current: ActionId[], skills: GameState["skills"], r
       const skillMet = isActionUnlocked(skills, skillName, def.unlockLevel);
       const techMet = !def.requiredTech || (researchedTechs?.includes(def.requiredTech) ?? false);
       const wallsMet = !def.requiredWalls || (wallsBuilt ?? 0) >= def.requiredWalls;
-      // Auto-unlock when gated by skill level, required tech, or required walls
-      if (skillMet && techMet && wallsMet && (def.unlockLevel > 0 || def.requiredTech || def.requiredWalls)) {
+      const barracksMet = !def.requiredBarracks || (barracksBuilt ?? 0) >= def.requiredBarracks;
+      // Auto-unlock when gated by skill level, required tech, required walls, or required barracks
+      if (skillMet && techMet && wallsMet && barracksMet && (def.unlockLevel > 0 || def.requiredTech || def.requiredWalls || def.requiredBarracks)) {
         updated = updated === current ? [...current] : updated;
         updated.push(def.id);
       }
@@ -295,7 +296,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // When food cap is reached, unlock the other starting actions
       const { resources } = tickedState.run;
       if (resources.food >= resources.foodStorage) {
-        const startingUnlocks: ActionId[] = ["gather_wood", "train_militia", "research_tools"];
+        const startingUnlocks: ActionId[] = ["gather_wood", "research_tools"];
         const missing = startingUnlocks.filter(id => !tickedState.unlockedActions.includes(id));
         if (missing.length > 0) {
           const unlockedActions = [...tickedState.unlockedActions, ...missing];
@@ -307,7 +308,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           run.pendingEvents = [...run.pendingEvents, {
             eventId: "food_cap_unlock",
             title: "New Skills Discovered",
-            message: "Your food stores are full. Your people now have time to explore new pursuits: gathering wood, military training, and tool research.",
+            message: "Your food stores are full. Your people now have time to explore new pursuits: gathering wood and tool research. Build structures to unlock more.",
             type: "success" as const,
             year: run.year,
             firstTime,
@@ -318,7 +319,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           }
           run.log = [...run.log, {
             year: run.year,
-            message: "Food storage full — new skills unlocked: Building, Military, Research.",
+            message: "Food storage full — new skills unlocked: Building, Research.",
             type: "success" as const,
           }];
 
@@ -327,7 +328,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       // Check if skills unlocked new actions
-      const newUnlocks = computeSkillUnlocks(tickedState.unlockedActions, tickedState.skills, tickedState.run.resources.researchedTechs, tickedState.run.resources.wallsBuilt);
+      const newUnlocks = computeSkillUnlocks(tickedState.unlockedActions, tickedState.skills, tickedState.run.resources.researchedTechs, tickedState.run.resources.wallsBuilt, tickedState.run.resources.barracksBuilt);
       if (newUnlocks !== tickedState.unlockedActions) {
         localStorage.setItem("epoch_unlocked_actions", JSON.stringify(newUnlocks));
         tickedState = { ...tickedState, unlockedActions: newUnlocks };

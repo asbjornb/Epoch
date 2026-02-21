@@ -40,6 +40,26 @@ export const ACTION_DEFS: ActionDef[] = [
     woodCost: 50,
   },
   {
+    id: "build_smokehouse",
+    name: "Build Smokehouse",
+    description: "Smoke and cure food to slow spoilage. Each smokehouse ×0.90 spoilage rate. Costs 15 wood.",
+    skill: "building",
+    category: "building",
+    baseDuration: 100,
+    unlockLevel: 1,
+    woodCost: 15,
+  },
+  {
+    id: "build_barracks",
+    name: "Build Barracks",
+    description: "Military quarters. Unlocks militia training. Each barracks ×1.10 training output. Costs 25 wood.",
+    skill: "building",
+    category: "building",
+    baseDuration: 140,
+    unlockLevel: 3,
+    woodCost: 25,
+  },
+  {
     id: "build_wall",
     name: "Build Wall",
     description: "Fortify defenses. Each wall ×1.15 total defense. Costs 30 wood.",
@@ -57,6 +77,7 @@ export const ACTION_DEFS: ActionDef[] = [
     category: "military",
     baseDuration: 150,
     unlockLevel: 0,
+    requiredBarracks: 1,
   },
   {
     id: "research_tools",
@@ -115,6 +136,7 @@ export const ACTION_DEFS: ActionDef[] = [
     category: "military",
     baseDuration: 60,
     unlockLevel: 3,
+    requiredBarracks: 1,
   },
   {
     id: "cure_food",

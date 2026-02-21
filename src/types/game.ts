@@ -16,6 +16,8 @@ export interface Resources {
   wood: number;
   militaryStrength: number;
   wallsBuilt: number;
+  barracksBuilt: number;
+  smokehousesBuilt: number;
   foodStorage: number;
   granariesBuilt: number;
   researchedTechs: ActionId[];
@@ -26,6 +28,8 @@ export type ActionId =
   | "build_hut"
   | "build_granary"
   | "build_wall"
+  | "build_barracks"
+  | "build_smokehouse"
   | "train_militia"
   | "research_tools"
   | "research_irrigation"
@@ -52,6 +56,8 @@ export interface ActionDef {
   requiredTech?: ActionId;
   /** Minimum walls built before this action unlocks */
   requiredWalls?: number;
+  /** Minimum barracks built before this action unlocks */
+  requiredBarracks?: number;
   /** Action only produces results on completion; duration scales with pop instead of output.
    *  "building" = linear scaling, "research" = sublinear (diminishing returns past 2 pop). */
   completionOnly?: "building" | "research";

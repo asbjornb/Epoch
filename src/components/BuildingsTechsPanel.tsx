@@ -21,6 +21,12 @@ function getBuildings(resources: Resources): BuildingEntry[] {
   if (resources.granariesBuilt > 0) {
     buildings.push({ name: "Granary", count: resources.granariesBuilt, icon: "\u{1F3D7}", color: "#9a8a72" });
   }
+  if (resources.smokehousesBuilt > 0) {
+    buildings.push({ name: "Smokehouse", count: resources.smokehousesBuilt, icon: "\u{1F3D7}", color: "#9a8a72" });
+  }
+  if (resources.barracksBuilt > 0) {
+    buildings.push({ name: "Barracks", count: resources.barracksBuilt, icon: "\u{1F3D7}", color: "#b07070" });
+  }
   if (resources.wallsBuilt > 0) {
     buildings.push({ name: "Wall", count: resources.wallsBuilt, icon: "\u{1F3D7}", color: "#9a8a72" });
   }
