@@ -118,7 +118,7 @@ export function getEffectiveDuration(
 function getTechMultiplierForAction(researchedTechs: string[], actionId: string): number {
   let mult = 1.0;
   if (researchedTechs.includes("research_tools") && actionId === "gather_wood") {
-    mult *= 1.15;
+    mult *= 1.25;
   }
   if (researchedTechs.includes("research_irrigation") && actionId === "farm") {
     mult *= 1.15;
@@ -569,7 +569,7 @@ function applyActionPerTick(
       }
       break;
     case "gather_wood":
-      resources.wood += 0.5 * outputMult;
+      resources.wood += 0.4 * outputMult;
       break;
     case "train_militia":
       resources.militaryStrength += 0.2 * outputMult;
