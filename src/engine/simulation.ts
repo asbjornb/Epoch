@@ -161,13 +161,13 @@ export function getBuildingCount(resources: Resources, actionId: string): number
     case "build_hut":
       return Math.max(0, Math.round((resources.maxPopulation - INITIAL_MAX_POP) / 3));
     case "build_granary":
-      return resources.granariesBuilt;
+      return resources.granariesBuilt ?? 0;
     case "build_smokehouse":
-      return resources.smokehousesBuilt;
+      return resources.smokehousesBuilt ?? 0;
     case "build_barracks":
-      return resources.barracksBuilt;
+      return resources.barracksBuilt ?? 0;
     case "build_wall":
-      return resources.wallsBuilt;
+      return resources.wallsBuilt ?? 0;
     default:
       return 0;
   }
