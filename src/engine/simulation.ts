@@ -55,6 +55,8 @@ export function createInitialResources(): Resources {
     wood: 0,
     militaryStrength: 0,
     wallsBuilt: 0,
+    barracksBuilt: 0,
+    smokehousesBuilt: 0,
     foodStorage: INITIAL_FOOD_STORAGE,
     granariesBuilt: 0,
     researchedTechs: [],
@@ -137,6 +139,16 @@ function getWallDefenseMultiplier(wallsBuilt: number): number {
 /** Fortification defense multiplier: +20% total defense when researched */
 function getFortificationMultiplier(researchedTechs: string[]): number {
   return researchedTechs.includes("research_fortification") ? 1.20 : 1.0;
+}
+
+/** Smokehouse spoilage multiplier: each smokehouse reduces spoilage by 10% */
+function getSmokehouseSpoilageMultiplier(smokehousesBuilt: number): number {
+  return Math.pow(0.90, smokehousesBuilt);
+}
+
+/** Barracks training multiplier: each barracks gives +10% military training output */
+function getBarracksTrainingMultiplier(barracksBuilt: number): number {
+  return Math.pow(1.10, barracksBuilt);
 }
 
 /** Calculate total defense from all sources */
@@ -264,8 +276,10 @@ export function tick(state: GameState): GameState {
 
   // Food spoilage: smooth quadratic curve, always applies
   // Regular food and preserved food spoil independently
-  const spoiled = calculateSpoilage(resources.food, resources.foodStorage);
-  const preservedSpoiled = calculatePreservedSpoilage(resources.preservedFood, resources.foodStorage);
+  // Smokehouses reduce spoilage rate
+  const smokeMult = getSmokehouseSpoilageMultiplier(resources.smokehousesBuilt);
+  const spoiled = calculateSpoilage(resources.food, resources.foodStorage) * smokeMult;
+  const preservedSpoiled = calculatePreservedSpoilage(resources.preservedFood, resources.foodStorage) * smokeMult;
   const totalSpoiled = spoiled + preservedSpoiled;
   if (totalSpoiled > 0.001) {
     resources.food -= spoiled;
@@ -526,7 +540,7 @@ function applyActionPerTick(
       resources.wood += 0.5 * outputMult;
       break;
     case "train_militia":
-      resources.militaryStrength += 0.2 * outputMult;
+      resources.militaryStrength += 0.2 * outputMult * getBarracksTrainingMultiplier(resources.barracksBuilt);
       break;
     case "scout":
       resources.militaryStrength += 0.05 * outputMult;
@@ -556,6 +570,14 @@ function applyActionCompletion(
       log.push({ year, message: `Granary built (+${bonus} storage). Food storage now ${Math.floor(resources.foodStorage)}.`, type: "info" });
       break;
     }
+    case "build_smokehouse":
+      resources.smokehousesBuilt += 1;
+      log.push({ year, message: `Smokehouse built (${resources.smokehousesBuilt} total). Spoilage ×${getSmokehouseSpoilageMultiplier(resources.smokehousesBuilt).toFixed(2)}.`, type: "info" });
+      break;
+    case "build_barracks":
+      resources.barracksBuilt += 1;
+      log.push({ year, message: `Barracks built (${resources.barracksBuilt} total). Training output ×${getBarracksTrainingMultiplier(resources.barracksBuilt).toFixed(2)}.`, type: "info" });
+      break;
     case "build_wall":
       resources.wallsBuilt += 1;
       log.push({ year, message: `Wall built (${resources.wallsBuilt} total). Defense ×${getWallDefenseMultiplier(resources.wallsBuilt).toFixed(2)}.`, type: "info" });
@@ -620,6 +642,12 @@ function applyCompletionPreview(
       resources.granariesBuilt++;
       break;
     }
+    case "build_smokehouse":
+      resources.smokehousesBuilt += 1;
+      break;
+    case "build_barracks":
+      resources.barracksBuilt += 1;
+      break;
     case "build_wall":
       resources.wallsBuilt += 1;
       break;
@@ -754,11 +782,12 @@ export function simulateQueuePreview(
     }
 
     // Spoilage (smooth quadratic) — separate for normal and preserved food
-    const spoilage = calculateSpoilage(resources.food, resources.foodStorage);
+    const previewSmokeMult = getSmokehouseSpoilageMultiplier(resources.smokehousesBuilt);
+    const spoilage = calculateSpoilage(resources.food, resources.foodStorage) * previewSmokeMult;
     if (spoilage > 0.001) {
       resources.food -= spoilage;
     }
-    const preservedSpoilagePreview = calculatePreservedSpoilage(resources.preservedFood, resources.foodStorage);
+    const preservedSpoilagePreview = calculatePreservedSpoilage(resources.preservedFood, resources.foodStorage) * previewSmokeMult;
     if (preservedSpoilagePreview > 0.001) {
       resources.preservedFood -= preservedSpoilagePreview;
     }
