@@ -1,6 +1,5 @@
 import type { GameState, ActionId } from "../types/game.ts";
 import { ACTION_DEFS } from "../types/actions.ts";
-import { getTotalDefense } from "./simulation.ts";
 
 export function getSkillHint(state: GameState): string {
   const { skills, unlockedActions, run } = state;
@@ -55,15 +54,6 @@ export function getSkillHint(state: GameState): string {
     }
   }
 
-  // All actions unlocked — give general progression tips
-  const totalDefense = getTotalDefense(run.resources);
-  if (state.encounteredDisasters.length === 0 && totalDefense < 250) {
-    return "Build up your defenses. Threats may test your civilization when you least expect it.";
-  }
-
-  if (run.resources.researchedTechs.length < 3) {
-    return "Research more technologies to boost your civilization's output.";
-  }
-
-  return "Keep leveling your skills. Higher levels mean faster actions and greater output.";
+  // All actions unlocked
+  return "You've unlocked all available actions. Keep growing your civilization!";
 }
