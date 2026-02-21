@@ -782,6 +782,94 @@ h1, h2, h3 {
   color: var(--danger);
 }
 
+/* Queue item checkbox for selection mode */
+.queue-item-checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Queue item in a group — slightly indented, no border radius on group edges */
+.queue-item.in-group {
+  border-radius: 4px;
+}
+
+/* Queue item selected for merge */
+.queue-item.selected {
+  border-color: rgba(196, 154, 60, 0.4);
+  background: rgba(196, 154, 60, 0.05);
+}
+
+/* Queue Group wrapper */
+.queue-group {
+  border: 1px solid rgba(196, 154, 60, 0.3);
+  border-radius: 10px;
+  background: rgba(196, 154, 60, 0.04);
+  overflow: hidden;
+}
+
+.queue-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: rgba(196, 154, 60, 0.08);
+  border-bottom: 1px solid rgba(196, 154, 60, 0.15);
+}
+
+.queue-group-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.queue-group-header-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.queue-group-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.queue-group-repeat-label {
+  font-size: 0.7rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.queue-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+
+.queue-group-iter-progress {
+  padding: 2px 8px 6px;
+}
+
+/* Primary variant for queue action buttons (e.g., Merge) */
+.queue-clear-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.queue-clear-btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--bg);
+}
+
 /* Queue toggle settings area */
 .queue-toggles {
   display: flex;

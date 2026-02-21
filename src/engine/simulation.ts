@@ -14,6 +14,9 @@ import {
   getSkillDurationMultiplier,
   getSkillOutputMultiplier,
 } from "./skills.ts";
+import {
+  resolveLogicalIndex,
+} from "./queueGroups.ts";
 
 import type { DisasterInfo } from "../types/game.ts";
 
@@ -259,27 +262,17 @@ function pushRunSummaryLog(
 function getCurrentQueueEntry(run: RunState): { entry: QueueEntry; index: number } | null {
   if (run.queue.length === 0) return null;
 
-  let queueIdx = 0;
+  const resolved = resolveLogicalIndex(run.queue, run.currentQueueIndex);
 
-  let logicalPos = 0;
-  for (let i = 0; i < run.queue.length; i++) {
-    const entry = run.queue[i];
-    const repeats = entry.repeat;
-    if (repeats === -1 || logicalPos + repeats > run.currentQueueIndex) {
-      queueIdx = i;
-      break;
-    }
-    logicalPos += repeats;
-    if (i === run.queue.length - 1) {
-      // Queue exhausted — repeat last action or signal end
-      if (run.repeatLastAction) {
-        return { entry: run.queue[run.queue.length - 1], index: run.currentQueueIndex };
-      }
-      return null;
-    }
+  if (resolved) {
+    return { entry: run.queue[resolved.arrayIndex], index: run.currentQueueIndex };
   }
 
-  return { entry: run.queue[queueIdx], index: run.currentQueueIndex };
+  // Queue exhausted — repeat last action or signal end
+  if (run.repeatLastAction) {
+    return { entry: run.queue[run.queue.length - 1], index: run.currentQueueIndex };
+  }
+  return null;
 }
 
 export function tick(state: GameState): GameState {
@@ -802,23 +795,15 @@ export function simulateQueuePreview(
   // Instead, simulate tick-by-tick with the same queue index logic
 
   while (year < MAX_YEAR) {
-    // Find current queue entry
-    let arrayIdx = -1;
-    let logicalPos = 0;
-    for (let i = 0; i < queue.length; i++) {
-      const reps = queue[i].repeat;
-      if (reps === -1 || logicalPos + reps > queueLogicalIndex) {
-        arrayIdx = i;
-        break;
-      }
-      logicalPos += reps;
-    }
+    // Find current queue entry (group-aware)
+    const resolved = resolveLogicalIndex(queue, queueLogicalIndex);
 
     // Queue exhausted — stop simulation (don't repeat last action for preview)
-    if (arrayIdx === -1) {
+    if (!resolved) {
       break;
     }
 
+    const arrayIdx = resolved.arrayIndex;
     const entry = queue[arrayIdx];
     const def = getActionDef(entry.actionId);
     if (!def) break;

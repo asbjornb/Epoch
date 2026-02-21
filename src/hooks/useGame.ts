@@ -9,6 +9,12 @@ import type {
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { initialSkills, isActionUnlocked } from "../engine/skills.ts";
 import { createInitialRun, tick, getEffectiveDuration, getAchievementBonuses } from "../engine/simulation.ts";
+import {
+  getGroupRange,
+  getSegmentLogicalSize,
+  resolveLogicalIndex,
+  getLogicalStartOfSegment,
+} from "../engine/queueGroups.ts";
 
 export type GameAction =
   | { type: "tick" }
@@ -28,6 +34,11 @@ export type GameAction =
   | { type: "queue_set_repeat"; uid: string; repeat: number }
   | { type: "queue_duplicate"; uid: string }
   | { type: "queue_clear" }
+  | { type: "queue_merge"; uids: string[] }
+  | { type: "queue_split"; groupId: string }
+  | { type: "queue_set_group_repeat"; groupId: string; repeat: number }
+  | { type: "queue_move_group"; groupId: string; direction: "up" | "down" }
+  | { type: "queue_duplicate_group"; groupId: string }
   | { type: "queue_load"; queue: QueueEntry[]; repeatLastAction: boolean }
   | { type: "force_collapse"; reason?: string }
   | { type: "import_save"; state: GameState }
@@ -40,6 +51,11 @@ export type GameAction =
 let uidCounter = 0;
 export function makeUid(): string {
   return `q_${++uidCounter}_${Date.now()}`;
+}
+
+let groupCounter = 0;
+export function makeGroupId(): string {
+  return `g_${++groupCounter}_${Date.now()}`;
 }
 
 function loadSkills(): GameState["skills"] {
@@ -255,7 +271,8 @@ function createInitialState(): GameState {
   };
 }
 
-/** Compute how many times each queue entry actually completed during a run. */
+/** Compute how many times each queue entry actually completed during a run.
+ *  Group-aware: accounts for groupRepeat cycling through group members. */
 function computeQueueCompletions(
   queue: QueueEntry[],
   currentQueueIndex: number,
@@ -265,23 +282,58 @@ function computeQueueCompletions(
   if (queue.length === 0) return completions;
 
   let logicalPos = 0;
-  for (let i = 0; i < queue.length; i++) {
-    const repeats = queue[i].repeat;
+  let i = 0;
+  while (i < queue.length) {
+    const entry = queue[i];
 
-    if (repeats === -1) {
-      // Infinite repeat: all remaining completions go to this entry
-      completions[i] = Math.max(0, currentQueueIndex - logicalPos);
-      return completions;
+    if (entry.groupId) {
+      const range = getGroupRange(queue, i)!;
+      const totalSize = range.iterationSize * range.groupRepeat;
+
+      if (logicalPos + totalSize > currentQueueIndex) {
+        // Partially completed group
+        const offset = currentQueueIndex - logicalPos;
+        const fullIters = Math.floor(offset / range.iterationSize);
+        let remainingInIter = offset - fullIters * range.iterationSize;
+
+        // Full iterations: each member got its full repeat count
+        for (let j = range.startIdx; j < range.endIdx; j++) {
+          completions[j] = fullIters * queue[j].repeat;
+        }
+
+        // Partial iteration
+        for (let j = range.startIdx; j < range.endIdx; j++) {
+          if (remainingInIter <= 0) break;
+          const used = Math.min(queue[j].repeat, remainingInIter);
+          completions[j] += used;
+          remainingInIter -= used;
+        }
+        return completions;
+      }
+
+      // Fully completed group
+      for (let j = range.startIdx; j < range.endIdx; j++) {
+        completions[j] = range.groupRepeat * queue[j].repeat;
+      }
+      logicalPos += totalSize;
+      i = range.endIdx;
+    } else {
+      const repeats = entry.repeat;
+
+      if (repeats === -1) {
+        completions[i] = Math.max(0, currentQueueIndex - logicalPos);
+        return completions;
+      }
+
+      if (logicalPos + repeats > currentQueueIndex) {
+        completions[i] = Math.max(0, currentQueueIndex - logicalPos);
+        return completions;
+      }
+
+      completions[i] = repeats;
+      logicalPos += repeats;
+      i++;
     }
-
-    if (logicalPos + repeats > currentQueueIndex) {
-      // Partially completed entry — entries after this never started
-      completions[i] = Math.max(0, currentQueueIndex - logicalPos);
-      return completions;
-    }
-
-    completions[i] = repeats;
-    logicalPos += repeats;
   }
 
   // Queue fully exhausted — if repeatLastAction, extra completions go to last entry
@@ -603,24 +655,62 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       let { currentQueueIndex, currentActionProgress } = state.run;
 
       if ((state.run.status === "running" || state.run.status === "paused") && removedEntry.repeat !== -1) {
-        let entryLogicalStart = 0;
-        let reachable = true;
-        for (let i = 0; i < entryIdx; i++) {
-          const r = state.run.queue[i].repeat;
-          if (r === -1) { reachable = false; break; }
-          entryLogicalStart += r;
+        // Use group-aware logical size computation on the OLD queue
+        const segStart = getLogicalStartOfSegment(state.run.queue, entryIdx);
+        const seg = getSegmentLogicalSize(state.run.queue, removedEntry.groupId ? (() => {
+          // Find group start
+          let s = entryIdx;
+          while (s > 0 && state.run.queue[s - 1].groupId === removedEntry.groupId) s--;
+          return s;
+        })() : entryIdx);
+        const segEnd = segStart + seg.size;
+
+        // Compute new segment size after removal (if item was in a group, group shrinks)
+        let newSegSize: number;
+        if (removedEntry.groupId) {
+          // Recalculate the group size in the new queue without this entry
+          const groupRange = getGroupRange(state.run.queue, entryIdx)!;
+          const newIterSize = groupRange.iterationSize - removedEntry.repeat;
+          const membersLeft = groupRange.endIdx - groupRange.startIdx - 1;
+          if (membersLeft <= 1) {
+            // Group dissolved to single item — no groupRepeat
+            newSegSize = newIterSize;
+          } else {
+            newSegSize = newIterSize * groupRange.groupRepeat;
+          }
+        } else {
+          newSegSize = 0;
         }
 
-        if (reachable) {
-          const entryEnd = entryLogicalStart + removedEntry.repeat;
-          if (currentQueueIndex >= entryEnd) {
-            // Past the removed entry: shift back
-            currentQueueIndex -= removedEntry.repeat;
-          } else if (currentQueueIndex >= entryLogicalStart) {
-            // Inside the removed entry: snap to its start (now the next entry)
-            currentQueueIndex = entryLogicalStart;
+        const sizeDelta = seg.size - newSegSize;
+
+        if (currentQueueIndex >= segEnd) {
+          // Past the segment: shift back by the size reduction
+          currentQueueIndex -= sizeDelta;
+        } else if (currentQueueIndex >= segStart) {
+          // Inside the segment — need to check if we're still in a valid position
+          if (!removedEntry.groupId) {
+            // Standalone entry removed: snap to its start
+            currentQueueIndex = segStart;
             currentActionProgress = 0;
+          } else {
+            // Group member removed: try to keep position, but clamp if needed
+            const offsetInSeg = currentQueueIndex - segStart;
+            if (newSegSize === 0 || offsetInSeg >= newSegSize) {
+              currentQueueIndex = segStart + Math.max(0, newSegSize);
+              currentActionProgress = 0;
+            }
+            // Otherwise position is still valid within the smaller group
           }
+        }
+      }
+
+      // If removing leaves a group with just 1 member, dissolve the group
+      if (removedEntry.groupId) {
+        const remaining = queue.filter((e) => e.groupId === removedEntry.groupId);
+        if (remaining.length === 1) {
+          remaining[0].groupId = undefined;
+          remaining[0].groupRepeat = undefined;
         }
       }
 
@@ -632,40 +722,87 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const queue = [...state.run.queue];
       const idx = queue.findIndex((e) => e.uid === action.uid);
       if (idx < 0) return state;
+
+      // If item is in a group, move the whole group
+      const entry = queue[idx];
+      if (entry.groupId) {
+        // Delegate to group move
+        return gameReducer(state, { type: "queue_move_group", groupId: entry.groupId, direction: action.direction });
+      }
+
       const swapIdx = action.direction === "up" ? idx - 1 : idx + 1;
       if (swapIdx < 0 || swapIdx >= queue.length) return state;
 
-      let { currentQueueIndex, currentActionProgress } = state.run;
-
-      // Before swap: find which entry+repeat the index currently points to
-      let activeEntryUid: string | null = null;
-      let repeatWithinEntry = 0;
-      if (state.run.status === "running" || state.run.status === "paused") {
-        let logicalPos = 0;
-        for (const entry of queue) {
-          const r = entry.repeat;
-          if (r === -1 || logicalPos + r > currentQueueIndex) {
-            activeEntryUid = entry.uid;
-            repeatWithinEntry = currentQueueIndex - logicalPos;
-            break;
-          }
-          logicalPos += r;
+      // Can't swap into middle of a group — skip over it
+      const swapEntry = queue[swapIdx];
+      let actualSwapStart: number, actualSwapEnd: number;
+      if (swapEntry.groupId) {
+        const range = getGroupRange(queue, swapIdx)!;
+        if (action.direction === "up") {
+          actualSwapStart = range.startIdx;
+          actualSwapEnd = range.endIdx;
+        } else {
+          actualSwapStart = range.startIdx;
+          actualSwapEnd = range.endIdx;
         }
+      } else {
+        actualSwapStart = swapIdx;
+        actualSwapEnd = swapIdx + 1;
       }
 
-      [queue[idx], queue[swapIdx]] = [queue[swapIdx], queue[idx]];
+      let { currentQueueIndex } = state.run;
+      const { currentActionProgress } = state.run;
 
-      // After swap: recompute index to keep pointing at the same entry+repeat
+      // Before move: find which entry+repeat the index currently points to
+      const resolved = (state.run.status === "running" || state.run.status === "paused")
+        ? resolveLogicalIndex(queue, currentQueueIndex) : null;
+      const activeEntryUid = resolved ? queue[resolved.arrayIndex].uid : null;
+      const repeatWithinEntry = resolved ? resolved.repeatWithinEntry : 0;
+      const activeGroupIter = resolved ? resolved.groupIteration : 0;
+
+      // Perform the move: remove the item and insert it on the other side of the swap target
+      const [removed] = queue.splice(idx, 1);
+      if (action.direction === "up") {
+        queue.splice(actualSwapStart, 0, removed);
+      } else {
+        // Insert after the group/item we're jumping over
+        const insertAt = idx < actualSwapStart ? actualSwapEnd - 1 : actualSwapEnd - 1;
+        queue.splice(insertAt, 0, removed);
+      }
+
+      // After move: recompute index to keep pointing at the same entry+repeat
       if (activeEntryUid) {
+        const newResolved = resolveLogicalIndex(queue, 0); // dummy, we'll search
+        void newResolved;
         let logicalPos = 0;
-        for (const entry of queue) {
-          if (entry.uid === activeEntryUid) {
+        let qi = 0;
+        while (qi < queue.length) {
+          const e = queue[qi];
+          if (e.uid === activeEntryUid && !e.groupId) {
             currentQueueIndex = logicalPos + repeatWithinEntry;
             break;
           }
-          const r = entry.repeat;
-          if (r === -1) break;
-          logicalPos += r;
+          if (e.groupId) {
+            const range = getGroupRange(queue, qi)!;
+            let found = false;
+            for (let j = range.startIdx; j < range.endIdx; j++) {
+              if (queue[j].uid === activeEntryUid) {
+                // Within a group: restore the full position
+                let posInIter = 0;
+                for (let k = range.startIdx; k < j; k++) posInIter += queue[k].repeat;
+                currentQueueIndex = logicalPos + activeGroupIter * range.iterationSize + posInIter + repeatWithinEntry;
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
+            logicalPos += range.iterationSize * range.groupRepeat;
+            qi = range.endIdx;
+          } else {
+            if (e.repeat === -1) break;
+            logicalPos += e.repeat;
+            qi++;
+          }
         }
       }
 
@@ -692,27 +829,31 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
       // Adjust currentQueueIndex so it keeps pointing at the same action instance
       if (state.run.status === "running" || state.run.status === "paused") {
-        let entryLogicalStart = 0;
-        let reachable = true;
-        for (let i = 0; i < entryIdx; i++) {
-          const r = state.run.queue[i].repeat;
-          if (r === -1) { reachable = false; break; } // infinite entry before; this one is unreachable
-          entryLogicalStart += r;
-        }
+        // Use group-aware segment sizes
+        const oldSegStart = getLogicalStartOfSegment(state.run.queue, entryIdx);
+        const oldSeg = getSegmentLogicalSize(state.run.queue, entry.groupId ? (() => {
+          let s = entryIdx;
+          while (s > 0 && state.run.queue[s - 1].groupId === entry.groupId) s--;
+          return s;
+        })() : entryIdx);
+        const oldSegEnd = oldSegStart + oldSeg.size;
 
-        if (reachable && oldRepeat !== -1 && newRepeat !== -1) {
-          const entryEnd = entryLogicalStart + oldRepeat;
-          if (currentQueueIndex >= entryEnd) {
-            // Already past this entry: shift index by the delta
-            currentQueueIndex += newRepeat - oldRepeat;
-          } else if (currentQueueIndex >= entryLogicalStart && newRepeat < oldRepeat) {
-            // Currently inside this entry and reducing repeats
-            const repeatWithinEntry = currentQueueIndex - entryLogicalStart;
-            if (repeatWithinEntry >= newRepeat) {
-              // Current position no longer exists; advance to next entry
-              currentQueueIndex = entryLogicalStart + newRepeat;
-              currentActionProgress = 0;
-            }
+        const newSeg = getSegmentLogicalSize(queue, entry.groupId ? (() => {
+          let s = entryIdx;
+          while (s > 0 && queue[s - 1].groupId === entry.groupId) s--;
+          return s;
+        })() : entryIdx);
+        const sizeDelta = newSeg.size - oldSeg.size;
+
+        if (currentQueueIndex >= oldSegEnd) {
+          // Past this segment: shift by delta
+          currentQueueIndex += sizeDelta;
+        } else if (currentQueueIndex >= oldSegStart && sizeDelta < 0) {
+          // Inside this segment and it shrank — check if position is still valid
+          const offsetInSeg = currentQueueIndex - oldSegStart;
+          if (offsetInSeg >= newSeg.size) {
+            currentQueueIndex = oldSegStart + newSeg.size;
+            currentActionProgress = 0;
           }
         }
       }
@@ -725,6 +866,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const entryIdx = state.run.queue.findIndex((e) => e.uid === action.uid);
       if (entryIdx < 0) return state;
       const original = state.run.queue[entryIdx];
+
+      // If item is in a group, duplicate the whole group
+      if (original.groupId) {
+        return gameReducer(state, { type: "queue_duplicate_group", groupId: original.groupId });
+      }
+
       // Research techs are single-use: don't duplicate
       const oDef = getActionDef(original.actionId);
       if (oDef?.category === "research") return state;
@@ -742,15 +889,235 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // If the run is active and the duplicate was inserted at or before the
       // current logical position, shift the index forward by the duplicate's repeats.
       if (state.run.status === "running" || state.run.status === "paused") {
-        let insertLogicalPos = 0;
-        let reachable = true;
-        for (let i = 0; i <= entryIdx; i++) {
-          const r = state.run.queue[i].repeat;
-          if (r === -1) { reachable = false; break; }
-          insertLogicalPos += r;
-        }
-        if (reachable && currentQueueIndex >= insertLogicalPos) {
+        const segStart = getLogicalStartOfSegment(state.run.queue, entryIdx);
+        const seg = getSegmentLogicalSize(state.run.queue, entryIdx);
+        const insertLogicalPos = segStart + seg.size;
+        if (currentQueueIndex >= insertLogicalPos) {
           currentQueueIndex += duplicate.repeat;
+        }
+      }
+
+      const run = { ...state.run, queue, currentQueueIndex };
+      return { ...state, run };
+    }
+
+    case "queue_merge": {
+      // Merge selected UIDs into a group. They must be contiguous in the queue.
+      const uids = action.uids;
+      if (uids.length < 2) return state;
+
+      const indices = uids.map((uid) => state.run.queue.findIndex((e) => e.uid === uid));
+      if (indices.some((i) => i < 0)) return state;
+      indices.sort((a, b) => a - b);
+
+      // Check contiguity
+      for (let k = 1; k < indices.length; k++) {
+        if (indices[k] !== indices[k - 1] + 1) return state;
+      }
+
+      // Items already in a group cannot be merged with others
+      if (indices.some((idx) => state.run.queue[idx].groupId)) return state;
+
+      const groupId = makeGroupId();
+      const queue = state.run.queue.map((e, idx) => {
+        if (indices.includes(idx)) {
+          return { ...e, groupId, groupRepeat: 1 };
+        }
+        return e;
+      });
+
+      const run = { ...state.run, queue };
+      return { ...state, run };
+    }
+
+    case "queue_split": {
+      // Split a group back into individual items
+      const { groupId } = action;
+      const queue = state.run.queue.map((e) => {
+        if (e.groupId === groupId) {
+          return { ...e, groupId: undefined, groupRepeat: undefined };
+        }
+        return e;
+      });
+
+      // Adjust currentQueueIndex: splitting doesn't change the logical sequence if groupRepeat=1
+      // but if groupRepeat > 1, the expansion changes. We need to map the current position.
+      let { currentQueueIndex } = state.run;
+      const { currentActionProgress } = state.run;
+
+      if (state.run.status === "running" || state.run.status === "paused") {
+        // Find the group in the OLD queue
+        const firstIdx = state.run.queue.findIndex((e) => e.groupId === groupId);
+        if (firstIdx >= 0) {
+          const range = getGroupRange(state.run.queue, firstIdx)!;
+          const segStart = getLogicalStartOfSegment(state.run.queue, firstIdx);
+          const oldSize = range.iterationSize * range.groupRepeat;
+          const newSize = range.iterationSize; // After split, groupRepeat is gone = 1 iteration
+
+          if (currentQueueIndex >= segStart + oldSize) {
+            // Past the group: shift by delta
+            currentQueueIndex -= (oldSize - newSize);
+          } else if (currentQueueIndex >= segStart) {
+            // Inside the group: map position
+            const offset = currentQueueIndex - segStart;
+            // Map to position within one iteration (wrap if needed)
+            const posInIter = offset % range.iterationSize;
+            currentQueueIndex = segStart + posInIter;
+          }
+        }
+      }
+
+      const run = { ...state.run, queue, currentQueueIndex, currentActionProgress };
+      return { ...state, run };
+    }
+
+    case "queue_set_group_repeat": {
+      const { groupId, repeat: newRepeat } = action;
+      if (newRepeat < 1) return state;
+
+      const firstIdx = state.run.queue.findIndex((e) => e.groupId === groupId);
+      if (firstIdx < 0) return state;
+      const range = getGroupRange(state.run.queue, firstIdx)!;
+      const oldRepeat = range.groupRepeat;
+      if (oldRepeat === newRepeat) return state;
+
+      const queue = state.run.queue.map((e) => {
+        if (e.groupId === groupId) return { ...e, groupRepeat: newRepeat };
+        return e;
+      });
+
+      let { currentQueueIndex, currentActionProgress } = state.run;
+
+      if (state.run.status === "running" || state.run.status === "paused") {
+        const segStart = getLogicalStartOfSegment(state.run.queue, firstIdx);
+        const oldSize = range.iterationSize * oldRepeat;
+        const newSize = range.iterationSize * newRepeat;
+        const segEnd = segStart + oldSize;
+
+        if (currentQueueIndex >= segEnd) {
+          currentQueueIndex += (newSize - oldSize);
+        } else if (currentQueueIndex >= segStart && newRepeat < oldRepeat) {
+          const offset = currentQueueIndex - segStart;
+          if (offset >= newSize) {
+            currentQueueIndex = segStart + newSize;
+            currentActionProgress = 0;
+          }
+        }
+      }
+
+      const run = { ...state.run, queue, currentQueueIndex, currentActionProgress };
+      return { ...state, run };
+    }
+
+    case "queue_move_group": {
+      const { groupId, direction } = action;
+      const firstIdx = state.run.queue.findIndex((e) => e.groupId === groupId);
+      if (firstIdx < 0) return state;
+      const range = getGroupRange(state.run.queue, firstIdx)!;
+
+      const queue = [...state.run.queue];
+      const groupItems = queue.splice(range.startIdx, range.endIdx - range.startIdx);
+
+      let insertIdx: number;
+      if (direction === "up") {
+        if (range.startIdx === 0) return state;
+        // Find the segment above
+        const aboveIdx = range.startIdx - 1;
+        if (queue[aboveIdx]?.groupId) {
+          const aboveRange = getGroupRange([...queue], aboveIdx)!;
+          insertIdx = aboveRange.startIdx;
+        } else {
+          insertIdx = aboveIdx;
+        }
+      } else {
+        if (range.startIdx >= queue.length) return state; // group was at end
+        // After splice, the item at range.startIdx is what was after the group
+        const belowIdx = range.startIdx;
+        if (belowIdx >= queue.length) return state;
+        if (queue[belowIdx]?.groupId) {
+          const belowRange = getGroupRange([...queue], belowIdx)!;
+          insertIdx = belowRange.endIdx;
+        } else {
+          insertIdx = belowIdx + 1;
+        }
+      }
+
+      queue.splice(insertIdx, 0, ...groupItems);
+
+      // Recompute currentQueueIndex to keep pointing at the same active entry
+      let { currentQueueIndex } = state.run;
+      const { currentActionProgress } = state.run;
+      if (state.run.status === "running" || state.run.status === "paused") {
+        const resolved = resolveLogicalIndex(state.run.queue, currentQueueIndex);
+        if (resolved) {
+          const activeUid = state.run.queue[resolved.arrayIndex].uid;
+          // Find the same UID in the new queue and compute its logical position
+          let logicalPos = 0;
+          let qi = 0;
+          let found = false;
+          while (qi < queue.length) {
+            const e = queue[qi];
+            if (e.groupId) {
+              const r = getGroupRange(queue, qi)!;
+              for (let j = r.startIdx; j < r.endIdx; j++) {
+                if (queue[j].uid === activeUid) {
+                  let posInIter = 0;
+                  for (let k = r.startIdx; k < j; k++) posInIter += queue[k].repeat;
+                  currentQueueIndex = logicalPos + resolved.groupIteration * r.iterationSize + posInIter + resolved.repeatWithinEntry;
+                  found = true;
+                  break;
+                }
+              }
+              if (found) break;
+              logicalPos += r.iterationSize * r.groupRepeat;
+              qi = r.endIdx;
+            } else {
+              if (e.uid === activeUid) {
+                currentQueueIndex = logicalPos + resolved.repeatWithinEntry;
+                found = true;
+                break;
+              }
+              if (e.repeat === -1) break;
+              logicalPos += e.repeat;
+              qi++;
+            }
+          }
+        }
+      }
+
+      const run = { ...state.run, queue, currentQueueIndex, currentActionProgress };
+      return { ...state, run };
+    }
+
+    case "queue_duplicate_group": {
+      const { groupId } = action;
+      const firstIdx = state.run.queue.findIndex((e) => e.groupId === groupId);
+      if (firstIdx < 0) return state;
+      const range = getGroupRange(state.run.queue, firstIdx)!;
+
+      // Don't duplicate groups containing research techs
+      const groupEntries = state.run.queue.slice(range.startIdx, range.endIdx);
+      if (groupEntries.some((e) => getActionDef(e.actionId)?.category === "research")) return state;
+
+      const newGroupId = makeGroupId();
+      const duplicates: QueueEntry[] = groupEntries.map((e) => ({
+        uid: makeUid(),
+        actionId: e.actionId,
+        repeat: e.repeat,
+        groupId: newGroupId,
+        groupRepeat: e.groupRepeat,
+      }));
+
+      const queue = [...state.run.queue];
+      queue.splice(range.endIdx, 0, ...duplicates);
+
+      let { currentQueueIndex } = state.run;
+
+      if (state.run.status === "running" || state.run.status === "paused") {
+        const segStart = getLogicalStartOfSegment(state.run.queue, firstIdx);
+        const segSize = range.iterationSize * range.groupRepeat;
+        if (currentQueueIndex >= segStart + segSize) {
+          currentQueueIndex += segSize; // duplicate has same size
         }
       }
 
@@ -764,7 +1131,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "queue_load": {
-      const newQueue = action.queue.map((e) => ({ ...e, uid: makeUid() }));
+      // Remap group IDs so loaded groups get fresh consistent IDs
+      const groupIdMap = new Map<string, string>();
+      const newQueue = action.queue.map((e) => {
+        const newEntry = { ...e, uid: makeUid() };
+        if (e.groupId) {
+          if (!groupIdMap.has(e.groupId)) {
+            groupIdMap.set(e.groupId, makeGroupId());
+          }
+          newEntry.groupId = groupIdMap.get(e.groupId);
+        }
+        return newEntry;
+      });
       const run = {
         ...state.run,
         queue: newQueue,

@@ -67,6 +67,8 @@ export interface QueueEntry {
   uid: string;
   actionId: ActionId;
   repeat: number; // 1 = run once, -1 = repeat forever
+  groupId?: string; // shared ID for merged group members (contiguous)
+  groupRepeat?: number; // how many times the group cycles (same for all members)
 }
 
 export interface RunState {
