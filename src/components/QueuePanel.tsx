@@ -180,11 +180,11 @@ function QueueItem({
               </button>
             </span>
           )}
-          {isActive && (
-            <span className="queue-item-timer">
-              {progress}/{duration} years
-            </span>
-          )}
+          <span className="queue-item-timer">
+            {isActive
+              ? `${progress}/${duration} years`
+              : `${(duration * entry.repeat).toLocaleString()} yrs`}
+          </span>
         </div>
         <div className="queue-item-right">
           <button
