@@ -49,16 +49,16 @@ export function getSkillHint(state: GameState): string {
       const unlockSkill = best.action.unlockSkill ?? best.action.skill;
       const skillName = unlockSkill.charAt(0).toUpperCase() + unlockSkill.slice(1);
       if (best.gap === 1) {
-        return `Almost there! One more ${skillName} level will unlock ${best.action.name}.`;
+        return `You're close to unlocking something new with ${skillName}. Keep going!`;
       }
-      return `Raise ${skillName} to level ${best.action.unlockLevel} to unlock ${best.action.name}.`;
+      return `Raising your ${skillName} skill might unlock new options.`;
     }
   }
 
   // All actions unlocked — give general progression tips
   const totalDefense = getTotalDefense(run.resources);
   if (state.encounteredDisasters.length === 0 && totalDefense < 250) {
-    return "Build up your defenses. Raiders will test your civilization at year 1500.";
+    return "Build up your defenses. Threats may test your civilization when you least expect it.";
   }
 
   if (run.resources.researchedTechs.length < 3) {

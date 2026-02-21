@@ -25,6 +25,10 @@ npm run preview    # Preview production build locally
 
 No current users. Backwards compatibility is not required until v1.
 
+## Content & Spoilers
+
+Hints, tooltips, and UI text should not spoil content the player hasn't unlocked yet. Avoid revealing specific unlock levels, action names, or event details before the player discovers them naturally. Keep hints vague and encouraging (e.g. "Raising your Building skill might unlock new options" instead of "Raise Building to level 2 to unlock Build Hut").
+
 ## Deployment
 
 GitHub Pages via GitHub Actions. Pushes to `main` trigger automatic builds and deploys. Base path is `/Epoch/`.
