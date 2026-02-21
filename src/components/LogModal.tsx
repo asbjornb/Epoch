@@ -94,10 +94,56 @@ function RunHistoryCard({ entry }: { entry: RunHistoryEntry }) {
           )}
 
           {(() => {
-            const performed = entry.queue.filter((qe) => (qe.completions ?? 0) > 0);
+            const hasCompletionData = entry.queue.some((qe) => qe.completions != null);
             const hasIncomplete = entry.lastActionId != null && entry.lastActionYearsRemaining != null;
             const incompleteActionDef = hasIncomplete ? getActionDef(entry.lastActionId!) : null;
             const totalDuration = hasIncomplete ? (entry.lastActionYearsDone ?? 0) + entry.lastActionYearsRemaining! : 0;
+
+            if (!hasCompletionData) {
+              // Old format: show full queue with configured repeats
+              return (
+                <div className="run-history-section">
+                  <div className="run-history-section-label">Actions</div>
+                  {entry.queue.length === 0 && !hasIncomplete ? (
+                    <div className="run-history-queue-empty">No actions queued</div>
+                  ) : (
+                    <div className="run-history-queue">
+                      {entry.queue.map((qe, j) => {
+                        const def = getActionDef(qe.actionId);
+                        const repeatLabel =
+                          qe.repeat === -1 ? "\u221E" : qe.repeat > 1 ? `\u00D7${qe.repeat}` : "";
+                        return (
+                          <div key={j} className="run-history-action-row">
+                            <span className="run-history-action-index">{j + 1}.</span>
+                            <span className="run-history-action-name">
+                              {def?.name ?? qe.actionId}
+                            </span>
+                            {repeatLabel && (
+                              <span className="run-history-action-repeat">
+                                {repeatLabel}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {hasIncomplete && (
+                        <div className="run-history-action-row run-history-action-incomplete">
+                          <span className="run-history-action-index">{entry.queue.length + 1}.</span>
+                          <span className="run-history-action-name">
+                            {incompleteActionDef?.name ?? entry.lastActionId}
+                          </span>
+                          <span className="run-history-action-progress">
+                            {entry.lastActionYearsDone ?? 0}/{totalDuration} yrs ({entry.lastActionYearsRemaining} remaining)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            const performed = entry.queue.filter((qe) => (qe.completions ?? 0) > 0);
             return (
               <div className="run-history-section">
                 <div className="run-history-section-label">Actions</div>
