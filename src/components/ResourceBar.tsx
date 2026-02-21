@@ -77,14 +77,6 @@ export function ResourceBar({ resources, year, maxYear, encounteredDisasters }: 
             />
           );
         })()}
-        {resources.researchedTechs.length > 0 && (
-          <ResourceItem
-            label="Tech"
-            value={resources.researchedTechs.length}
-            icon="🔬"
-            color="#6a8faa"
-          />
-        )}
       </div>
     </div>
   );

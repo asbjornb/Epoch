@@ -11,6 +11,7 @@ import { LogModal } from "./components/LogModal.tsx";
 import { SettingsPanel } from "./components/SettingsPanel.tsx";
 import { IncompatibleSaveModal } from "./components/IncompatibleSaveModal.tsx";
 import { HintButton } from "./components/HintButton.tsx";
+import { BuildingsTechsPanel } from "./components/BuildingsTechsPanel.tsx";
 import { getActionDef } from "./types/actions.ts";
 import type { ActionId, QueueEntry } from "./types/game.ts";
 
@@ -111,6 +112,7 @@ function App() {
       <main className="app-main">
         <div className="main-actions">
           <ActionPalette state={state} onActionClick={handleActionClick} currentQueue={draftMode ? draftQueue : state.run.queue} />
+          <BuildingsTechsPanel resources={state.run.resources} />
         </div>
         <div className="main-queue">
           <QueuePanel
@@ -126,6 +128,9 @@ function App() {
         </div>
         <div className="main-sidebar">
           <SkillsPanel skills={state.skills} />
+          <div className="mobile-bt-panel">
+            <BuildingsTechsPanel resources={state.run.resources} />
+          </div>
         </div>
       </main>
 
