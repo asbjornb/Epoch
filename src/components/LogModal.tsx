@@ -8,6 +8,8 @@ interface LogModalProps {
   log: LogEntry[];
   runHistory: RunHistoryEntry[];
   totalRuns: number;
+  bestRunYear: number;
+  totalYearsPlayed: number;
   onClose: () => void;
 }
 
@@ -173,33 +175,33 @@ function Stat({ label, value, warn }: { label: string; value: string | number; w
   );
 }
 
+/** Normalize collapse reasons so that e.g. all raider losses with different
+ *  defense numbers are grouped into a single bucket. */
+function normalizeCollapseReason(reason: string): string {
+  if (reason.startsWith("Raiders attacked")) return "Defeated by raiders";
+  if (reason.includes("starved")) return "Starvation";
+  return reason;
+}
+
 function StatisticsPanel({
   runHistory,
   totalRuns,
+  bestRunYear,
+  totalYearsPlayed,
 }: {
   runHistory: RunHistoryEntry[];
   totalRuns: number;
+  bestRunYear: number;
+  totalYearsPlayed: number;
 }) {
   const victories = runHistory.filter((r) => r.outcome === "victory").length;
   const collapses = runHistory.filter((r) => r.outcome === "collapsed").length;
   const abandoned = runHistory.filter((r) => r.outcome === "abandoned").length;
 
-  const bestYear =
-    runHistory.length > 0
-      ? Math.max(...runHistory.map((r) => r.year))
-      : 0;
-
-  const avgYear =
-    runHistory.length > 0
-      ? Math.round(
-          runHistory.reduce((sum, r) => sum + r.year, 0) / runHistory.length,
-        )
-      : 0;
-
   const collapseReasons = runHistory
     .filter((r) => r.outcome === "collapsed" && r.collapseReason)
     .reduce<Record<string, number>>((acc, r) => {
-      const reason = r.collapseReason!;
+      const reason = normalizeCollapseReason(r.collapseReason!);
       acc[reason] = (acc[reason] || 0) + 1;
       return acc;
     }, {});
@@ -211,46 +213,26 @@ function StatisticsPanel({
   return (
     <div className="stats-panel">
       <div className="stats-section">
-        <div className="stats-section-label">Overview</div>
+        <div className="stats-section-label">All Time</div>
         <div className="stats-grid">
           <div className="stats-card">
-            <span className="stats-card-value">{totalRuns + 1}</span>
-            <span className="stats-card-label">Current Run</span>
-          </div>
-          <div className="stats-card">
             <span className="stats-card-value">{totalRuns}</span>
-            <span className="stats-card-label">Completed</span>
+            <span className="stats-card-label">Runs</span>
           </div>
           <div className="stats-card">
-            <span className="stats-card-value stats-victory">{victories}</span>
-            <span className="stats-card-label">Victories</span>
+            <span className="stats-card-value">{bestRunYear.toLocaleString()}</span>
+            <span className="stats-card-label">Best Year</span>
           </div>
           <div className="stats-card">
-            <span className="stats-card-value stats-collapse">{collapses}</span>
-            <span className="stats-card-label">Collapses</span>
+            <span className="stats-card-value">{totalYearsPlayed.toLocaleString()}</span>
+            <span className="stats-card-label">Total Years</span>
           </div>
         </div>
       </div>
 
       {runHistory.length > 0 && (
         <div className="stats-section">
-          <div className="stats-section-label">Years</div>
-          <div className="stats-grid">
-            <div className="stats-card">
-              <span className="stats-card-value">{bestYear.toLocaleString()}</span>
-              <span className="stats-card-label">Best Year</span>
-            </div>
-            <div className="stats-card">
-              <span className="stats-card-value">{avgYear.toLocaleString()}</span>
-              <span className="stats-card-label">Avg Year</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {runHistory.length > 0 && (
-        <div className="stats-section">
-          <div className="stats-section-label">Outcomes</div>
+          <div className="stats-section-label">Recent Outcomes</div>
           <div className="stats-outcome-bar">
             {victories > 0 && (
               <div
@@ -299,7 +281,7 @@ function StatisticsPanel({
 
       {sortedReasons.length > 0 && (
         <div className="stats-section">
-          <div className="stats-section-label">Collapse Reasons</div>
+          <div className="stats-section-label">Recent Collapse Reasons</div>
           <div className="stats-reasons">
             {sortedReasons.map(([reason, count]) => (
               <div key={reason} className="stats-reason-row">
@@ -311,14 +293,14 @@ function StatisticsPanel({
         </div>
       )}
 
-      {runHistory.length === 0 && (
+      {totalRuns === 0 && (
         <div className="log-empty">No completed runs yet. Statistics will appear after your first run.</div>
       )}
     </div>
   );
 }
 
-export function LogModal({ log, runHistory, totalRuns, onClose }: LogModalProps) {
+export function LogModal({ log, runHistory, totalRuns, bestRunYear, totalYearsPlayed, onClose }: LogModalProps) {
   const [tab, setTab] = useState<"log" | "history" | "stats">("log");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -375,7 +357,7 @@ export function LogModal({ log, runHistory, totalRuns, onClose }: LogModalProps)
             <RunHistoryPanel runHistory={runHistory} />
           )}
           {tab === "stats" && (
-            <StatisticsPanel runHistory={runHistory} totalRuns={totalRuns} />
+            <StatisticsPanel runHistory={runHistory} totalRuns={totalRuns} bestRunYear={bestRunYear} totalYearsPlayed={totalYearsPlayed} />
           )}
         </div>
       </div>

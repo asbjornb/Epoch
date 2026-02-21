@@ -198,7 +198,7 @@ function App() {
 
       {/* Log modal */}
       {logOpen && (
-        <LogModal log={state.run.log} runHistory={state.runHistory} totalRuns={state.totalRuns} onClose={() => setLogOpen(false)} />
+        <LogModal log={state.run.log} runHistory={state.runHistory} totalRuns={state.totalRuns} bestRunYear={state.bestRunYear} totalYearsPlayed={state.totalYearsPlayed} onClose={() => setLogOpen(false)} />
       )}
 
       {/* Skills modal for mobile */}
