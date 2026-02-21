@@ -45,7 +45,7 @@ export const ACTION_DEFS: ActionDef[] = [
     description: "Military training grounds. Unlocks militia training. Each barracks ×1.15 military XP/tick. Costs 25 wood.",
     skill: "building",
     category: "building",
-    baseDuration: 100,
+    baseDuration: 150,
     unlockLevel: 2,
     woodCost: 25,
   },
