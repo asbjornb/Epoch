@@ -118,7 +118,7 @@ export function getEffectiveDuration(
 function getTechMultiplierForAction(researchedTechs: string[], actionId: string): number {
   let mult = 1.0;
   if (researchedTechs.includes("research_tools") && actionId === "gather_wood") {
-    mult *= 1.20;
+    mult *= 1.25;
   }
   if (researchedTechs.includes("research_irrigation") && actionId === "farm") {
     mult *= 1.15;
