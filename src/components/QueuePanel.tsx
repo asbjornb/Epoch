@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useRef } from "react";
 import type {
   ActionId,
   GameState,
@@ -106,13 +106,10 @@ function QueueItem({
   isFirst,
   isLast,
   inGroup,
-  selected,
-  selectMode,
   onSetRepeat,
   onMove,
   onRemove,
   onDuplicate,
-  onToggleSelect,
 }: {
   entry: QueueEntry;
   index: number;
@@ -124,13 +121,10 @@ function QueueItem({
   isFirst: boolean;
   isLast: boolean;
   inGroup: boolean;
-  selected: boolean;
-  selectMode: boolean;
   onSetRepeat: (uid: string, repeat: number) => void;
   onMove: (uid: string, direction: "up" | "down") => void;
   onRemove: (uid: string) => void;
   onDuplicate: (uid: string) => void;
-  onToggleSelect: (uid: string) => void;
 }) {
   const def = getActionDef(entry.actionId);
   if (!def) return null;
@@ -143,20 +137,12 @@ function QueueItem({
   const showRepeatLastCount = isActive && isRepeatingLast;
   const totalRepeatCount = isRepeatingLast ? entry.repeat + currentRepeat : 0;
   return (
-    <div className={`queue-item ${isActive ? "active" : ""}${inGroup ? " in-group" : ""}${selected ? " selected" : ""}`}>
+    <div className={`queue-item ${isActive ? "active" : ""}${inGroup ? " in-group" : ""}`}>
       {isActive && (
         <div className="queue-item-progress" style={{ width: `${pct}%` }} />
       )}
       <div className="queue-item-content">
         <div className="queue-item-left">
-          {selectMode && !inGroup && (
-            <input
-              type="checkbox"
-              className="queue-item-checkbox"
-              checked={selected}
-              onChange={() => onToggleSelect(entry.uid)}
-            />
-          )}
           <span className="queue-item-index">{index + 1}</span>
           <span
             className="queue-item-dot"
@@ -466,21 +452,6 @@ function QueuePreviewDisplay({
   );
 }
 
-/** Check if selected UIDs are contiguous ungrouped items in the queue. */
-function canMergeSelection(queue: QueueEntry[], selectedUids: Set<string>): boolean {
-  if (selectedUids.size < 2) return false;
-  const indices = queue
-    .map((e, i) => selectedUids.has(e.uid) ? i : -1)
-    .filter((i) => i >= 0);
-  if (indices.length < 2) return false;
-  // Check contiguity
-  for (let i = 1; i < indices.length; i++) {
-    if (indices[i] !== indices[i - 1] + 1) return false;
-  }
-  // Check none are already grouped
-  return indices.every((i) => !queue[i].groupId);
-}
-
 /** Build segments from queue for rendering: groups and standalone items. */
 interface Segment {
   type: "standalone" | "group";
@@ -536,23 +507,10 @@ export function QueuePanel({
   const isPaused = run.status === "paused";
   const isEnded = run.status === "collapsed" || run.status === "victory";
 
-  // Selection state for merge
-  const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
-  const [selectMode, setSelectMode] = useState(false);
-
-  const toggleSelect = useCallback((uid: string) => {
-    setSelectedUids((prev) => {
-      const next = new Set(prev);
-      if (next.has(uid)) next.delete(uid);
-      else next.add(uid);
-      return next;
-    });
-  }, []);
-
-  const clearSelection = useCallback(() => {
-    setSelectedUids(new Set());
-    setSelectMode(false);
-  }, []);
+  // Drag-and-drop state
+  const [dragSourceSegIdx, setDragSourceSegIdx] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ segIdx: number; position: "before" | "after" | "merge" } | null>(null);
+  const dragCounterRef = useRef(0);
 
   const getEffDuration = (actionId: ActionId) => {
     const def = getActionDef(actionId);
@@ -575,11 +533,6 @@ export function QueuePanel({
     dispatch({ type: "queue_remove", uid });
   const liveDuplicate = (uid: string) =>
     dispatch({ type: "queue_duplicate", uid });
-  const liveMerge = () => {
-    const uids = Array.from(selectedUids);
-    dispatch({ type: "queue_merge", uids });
-    clearSelection();
-  };
   const liveSplit = (groupId: string) =>
     dispatch({ type: "queue_split", groupId });
   const liveSetGroupRepeat = (groupId: string, repeat: number) =>
@@ -653,19 +606,6 @@ export function QueuePanel({
     q.splice(idx + 1, 0, copy);
     onDraftQueueChange(q);
   };
-  const draftMerge = () => {
-    const q = [...draftQueue];
-    const indices = q
-      .map((e, i) => selectedUids.has(e.uid) ? i : -1)
-      .filter((i) => i >= 0);
-    if (indices.length < 2) return;
-    const groupId = makeGroupId();
-    for (const idx of indices) {
-      q[idx] = { ...q[idx], groupId, groupRepeat: 1 };
-    }
-    onDraftQueueChange(q);
-    clearSelection();
-  };
   const draftSplit = (groupId: string) => {
     onDraftQueueChange(draftQueue.map((e) =>
       e.groupId === groupId ? { ...e, groupId: undefined, groupRepeat: undefined } : e,
@@ -723,6 +663,109 @@ export function QueuePanel({
     onDraftQueueChange(q);
   };
 
+  // Drag-and-drop: reorder segment in draft queue
+  const draftReorderSegment = (sourceUid: string, targetUid: string, position: "before" | "after") => {
+    const q = [...draftQueue];
+    const sourceIdx = q.findIndex((e) => e.uid === sourceUid);
+    const targetIdx = q.findIndex((e) => e.uid === targetUid);
+    if (sourceIdx < 0 || targetIdx < 0) return;
+
+    const sourceEntry = q[sourceIdx];
+    let sourceStart: number, sourceEnd: number;
+    if (sourceEntry.groupId) {
+      const range = getGroupRange(q, sourceIdx)!;
+      sourceStart = range.startIdx;
+      sourceEnd = range.endIdx;
+    } else {
+      sourceStart = sourceIdx;
+      sourceEnd = sourceIdx + 1;
+    }
+
+    const targetEntry = q[targetIdx];
+    let targetStart: number;
+    if (targetEntry.groupId) {
+      const range = getGroupRange(q, targetIdx)!;
+      targetStart = range.startIdx;
+    } else {
+      targetStart = targetIdx;
+    }
+
+    if (sourceStart === targetStart) return;
+
+    const sourceItems = q.splice(sourceStart, sourceEnd - sourceStart);
+
+    let insertIdx: number;
+    if (position === "before") {
+      const newTargetIdx = q.findIndex((e) => e.uid === targetUid);
+      if (newTargetIdx < 0) return;
+      const te = q[newTargetIdx];
+      insertIdx = te.groupId ? getGroupRange(q, newTargetIdx)!.startIdx : newTargetIdx;
+    } else {
+      const newTargetIdx = q.findIndex((e) => e.uid === targetUid);
+      if (newTargetIdx < 0) return;
+      const te = q[newTargetIdx];
+      insertIdx = te.groupId ? getGroupRange(q, newTargetIdx)!.endIdx : newTargetIdx + 1;
+    }
+
+    q.splice(insertIdx, 0, ...sourceItems);
+    onDraftQueueChange(q);
+  };
+
+  // Drag-and-drop: merge segments in draft queue
+  const draftDragMerge = (sourceUid: string, targetUid: string) => {
+    const q = [...draftQueue];
+    const sourceIdx = q.findIndex((e) => e.uid === sourceUid);
+    const targetIdx = q.findIndex((e) => e.uid === targetUid);
+    if (sourceIdx < 0 || targetIdx < 0) return;
+
+    const sourceEntry = q[sourceIdx];
+    const targetEntry = q[targetIdx];
+
+    let sourceStart: number, sourceEnd: number;
+    if (sourceEntry.groupId) {
+      const range = getGroupRange(q, sourceIdx)!;
+      sourceStart = range.startIdx;
+      sourceEnd = range.endIdx;
+    } else {
+      sourceStart = sourceIdx;
+      sourceEnd = sourceIdx + 1;
+    }
+
+    let targetStart: number;
+    if (targetEntry.groupId) {
+      targetStart = getGroupRange(q, targetIdx)!.startIdx;
+    } else {
+      targetStart = targetIdx;
+    }
+
+    if (sourceStart === targetStart) return;
+
+    const sourceItems = q.splice(sourceStart, sourceEnd - sourceStart).map((e) => ({
+      ...e,
+      groupId: undefined as string | undefined,
+      groupRepeat: undefined as number | undefined,
+    }));
+
+    const newTargetIdx = q.findIndex((e) => e.uid === targetUid);
+    if (newTargetIdx < 0) return;
+    const newTargetEntry = q[newTargetIdx];
+
+    if (newTargetEntry.groupId) {
+      const range = getGroupRange(q, newTargetIdx)!;
+      const groupId = newTargetEntry.groupId;
+      const groupRepeat = range.groupRepeat;
+      const insertItems = sourceItems.map((e) => ({ ...e, groupId, groupRepeat }));
+      q.splice(range.endIdx, 0, ...insertItems);
+    } else {
+      const groupId = makeGroupId();
+      q[newTargetIdx] = { ...q[newTargetIdx], groupId, groupRepeat: 1 };
+      const insertItems = sourceItems.map((e) => ({ ...e, groupId, groupRepeat: 1 }));
+      q.splice(newTargetIdx + 1, 0, ...insertItems);
+    }
+
+    onDraftQueueChange(q);
+  };
+
   const applyDraft = () => {
     const status = run.status;
     if (status === "running" || status === "paused") {
@@ -775,10 +818,101 @@ export function QueuePanel({
     return { activeArrayIdx, activeRepeatWithinEntry, activeGroupIter, isRepeatingLast };
   };
 
-  const currentQueue = draftMode ? draftQueue : queue;
-  const mergeEnabled = canMergeSelection(currentQueue, selectedUids);
+  // Drag-and-drop handlers
+  const handleDragStart = (segIdx: number) => (e: React.DragEvent) => {
+    setDragSourceSegIdx(segIdx);
+    dragCounterRef.current = 0;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(segIdx));
+    // Add a slight delay so the drag image renders before opacity changes
+    requestAnimationFrame(() => {
+      setDragSourceSegIdx(segIdx);
+    });
+  };
 
-  /** Render queue items, wrapping groups in QueueGroup components. */
+  const handleDragOver = (segIdx: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragSourceSegIdx === null || dragSourceSegIdx === segIdx) {
+      setDropTarget(null);
+      return;
+    }
+    e.dataTransfer.dropEffect = "move";
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const height = rect.height;
+    const ratio = y / height;
+
+    let position: "before" | "after" | "merge";
+    if (ratio < 0.25) {
+      position = "before";
+    } else if (ratio > 0.75) {
+      position = "after";
+    } else {
+      position = "merge";
+    }
+
+    setDropTarget({ segIdx, position });
+  };
+
+  const handleDragEnter = (segIdx: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current++;
+    if (dragSourceSegIdx !== null && dragSourceSegIdx !== segIdx) {
+      // Will be set by dragOver
+    }
+  };
+
+  const handleDragLeave = () => (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current--;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setDropTarget(null);
+    }
+  };
+
+  const handleDrop = (
+    segments: Segment[],
+    onReorder: (sourceUid: string, targetUid: string, position: "before" | "after") => void,
+    onMerge: (sourceUid: string, targetUid: string) => void,
+  ) => () => (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragSourceSegIdx === null || !dropTarget) {
+      clearDragState();
+      return;
+    }
+
+    const sourceSeg = segments[dragSourceSegIdx];
+    const targetSeg = segments[dropTarget.segIdx];
+    if (!sourceSeg || !targetSeg) {
+      clearDragState();
+      return;
+    }
+
+    const sourceUid = sourceSeg.entries[0].entry.uid;
+    const targetUid = targetSeg.entries[0].entry.uid;
+
+    if (dropTarget.position === "merge") {
+      onMerge(sourceUid, targetUid);
+    } else {
+      onReorder(sourceUid, targetUid, dropTarget.position);
+    }
+
+    clearDragState();
+  };
+
+  const handleDragEnd = () => {
+    clearDragState();
+  };
+
+  const clearDragState = () => {
+    setDragSourceSegIdx(null);
+    setDropTarget(null);
+    dragCounterRef.current = 0;
+  };
+
+  /** Render queue items, wrapping groups in QueueGroup components, with drag-and-drop. */
   const renderQueueItems = (
     q: QueueEntry[],
     callbacks: {
@@ -791,36 +925,54 @@ export function QueuePanel({
       onDuplicateGroup: (groupId: string) => void;
       onSplitGroup: (groupId: string) => void;
     },
+    dragCallbacks: {
+      onReorder: (sourceUid: string, targetUid: string, position: "before" | "after") => void;
+      onMerge: (sourceUid: string, targetUid: string) => void;
+    },
     activeInfo?: { activeArrayIdx: number; activeRepeatWithinEntry: number; activeGroupIter: number; isRepeatingLast: boolean },
     isLive?: boolean,
   ) => {
     const segments = buildSegments(q);
     const elements: React.ReactNode[] = [];
+    const dropHandler = handleDrop(segments, dragCallbacks.onReorder, dragCallbacks.onMerge);
 
     for (let segIdx = 0; segIdx < segments.length; segIdx++) {
       const seg = segments[segIdx];
       const isFirstSegment = segIdx === 0;
       const isLastSegment = segIdx === segments.length - 1;
 
+      const isDragSource = dragSourceSegIdx === segIdx;
+      const isDropTarget = dropTarget?.segIdx === segIdx;
+      const dropPosition = isDropTarget ? dropTarget.position : null;
+
+      const segKey = seg.type === "group" ? seg.groupId! : seg.entries[0].entry.uid;
+
+      // Drag wrapper classes
+      let dragClass = "queue-drag-segment";
+      if (isDragSource) dragClass += " dragging";
+      if (isDropTarget && dropPosition === "before") dragClass += " drop-before";
+      if (isDropTarget && dropPosition === "after") dragClass += " drop-after";
+      if (isDropTarget && dropPosition === "merge") dragClass += " drop-merge";
+
+      let segContent: React.ReactNode;
+
       if (seg.type === "group") {
         const groupEntries = seg.entries;
         const groupId = seg.groupId!;
         const groupRepeat = seg.groupRepeat ?? 1;
 
-        // Check if any item in the group is active
         let groupActiveIter = 0;
         if (activeInfo && isLive) {
           for (const { arrayIndex } of groupEntries) {
             if (arrayIndex === activeInfo.activeArrayIdx) {
-              groupActiveIter = activeInfo.activeGroupIter + 1; // 1-based
+              groupActiveIter = activeInfo.activeGroupIter + 1;
               break;
             }
           }
         }
 
-        elements.push(
+        segContent = (
           <QueueGroup
-            key={groupId}
             groupId={groupId}
             groupRepeat={groupRepeat}
             isFirstSegment={isFirstSegment}
@@ -849,17 +1001,14 @@ export function QueuePanel({
                   isFirst={memberIdx === 0}
                   isLast={memberIdx === groupEntries.length - 1}
                   inGroup={true}
-                  selected={false}
-                  selectMode={false}
                   onSetRepeat={callbacks.onSetRepeat}
                   onMove={callbacks.onMove}
                   onRemove={callbacks.onRemove}
                   onDuplicate={callbacks.onDuplicate}
-                  onToggleSelect={toggleSelect}
                 />
               );
             })}
-          </QueueGroup>,
+          </QueueGroup>
         );
       } else {
         const { entry, arrayIndex } = seg.entries[0];
@@ -868,9 +1017,8 @@ export function QueuePanel({
         const currentRepeat = isActive ? (activeInfo?.activeRepeatWithinEntry ?? 0) + 1 : 0;
         const isRepeatingLast = isActive && !!activeInfo?.isRepeatingLast;
 
-        elements.push(
+        segContent = (
           <QueueItem
-            key={entry.uid}
             entry={entry}
             index={arrayIndex}
             isActive={!!isActive}
@@ -881,16 +1029,29 @@ export function QueuePanel({
             isFirst={isFirstSegment}
             isLast={isLastSegment}
             inGroup={false}
-            selected={selectedUids.has(entry.uid)}
-            selectMode={selectMode}
             onSetRepeat={callbacks.onSetRepeat}
             onMove={callbacks.onMove}
             onRemove={callbacks.onRemove}
             onDuplicate={callbacks.onDuplicate}
-            onToggleSelect={toggleSelect}
-          />,
+          />
         );
       }
+
+      elements.push(
+        <div
+          key={segKey}
+          className={dragClass}
+          draggable
+          onDragStart={handleDragStart(segIdx)}
+          onDragOver={handleDragOver(segIdx)}
+          onDragEnter={handleDragEnter(segIdx)}
+          onDragLeave={handleDragLeave()}
+          onDrop={dropHandler()}
+          onDragEnd={handleDragEnd}
+        >
+          {segContent}
+        </div>,
+      );
     }
 
     return elements;
@@ -1032,6 +1193,12 @@ export function QueuePanel({
                       onDuplicateGroup: liveDuplicateGroup,
                       onSplitGroup: liveSplit,
                     },
+                    {
+                      onReorder: (sourceUid, targetUid, position) =>
+                        dispatch({ type: "queue_reorder_segment", sourceUid, targetUid, position }),
+                      onMerge: (sourceUid, targetUid) =>
+                        dispatch({ type: "queue_drag_merge", sourceUid, targetUid }),
+                    },
                     activeInfo,
                     true,
                   );
@@ -1085,43 +1252,16 @@ export function QueuePanel({
           />
 
           <div className="queue-actions-bar">
-            {selectMode ? (
-              <>
-                <button
-                  className="queue-clear-btn primary"
-                  onClick={liveMerge}
-                  disabled={!mergeEnabled}
-                  title={mergeEnabled ? "Merge selected items into a group" : "Select 2+ contiguous ungrouped items to merge"}
-                >
-                  Merge
-                </button>
-                <button
-                  className="queue-clear-btn"
-                  onClick={clearSelection}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                {queue.length >= 2 && (
-                  <button
-                    className="queue-clear-btn"
-                    onClick={() => setSelectMode(true)}
-                    title="Select items to merge into a group"
-                  >
-                    Select to Merge
-                  </button>
-                )}
-                <button
-                  className="queue-clear-btn"
-                  onClick={() => dispatch({ type: "queue_clear" })}
-                  disabled={queue.length === 0}
-                >
-                  Clear Queue
-                </button>
-              </>
+            {queue.length >= 2 && (
+              <span className="queue-drag-hint">Drag to reorder · drop on item to group</span>
             )}
+            <button
+              className="queue-clear-btn"
+              onClick={() => dispatch({ type: "queue_clear" })}
+              disabled={queue.length === 0}
+            >
+              Clear Queue
+            </button>
           </div>
         </>
       )}
@@ -1150,6 +1290,10 @@ export function QueuePanel({
                     onMoveGroup: draftMoveGroup,
                     onDuplicateGroup: draftDuplicateGroup,
                     onSplitGroup: draftSplit,
+                  },
+                  {
+                    onReorder: draftReorderSegment,
+                    onMerge: draftDragMerge,
                   },
                 )}
                 <div className="queue-toggles">
@@ -1184,50 +1328,23 @@ export function QueuePanel({
           />
 
           <div className="queue-actions-bar">
-            {selectMode ? (
-              <>
-                <button
-                  className="queue-clear-btn primary"
-                  onClick={draftMerge}
-                  disabled={!mergeEnabled}
-                  title={mergeEnabled ? "Merge selected items into a group" : "Select 2+ contiguous ungrouped items to merge"}
-                >
-                  Merge
-                </button>
-                <button
-                  className="queue-clear-btn"
-                  onClick={clearSelection}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                {draftQueue.length >= 2 && (
-                  <button
-                    className="queue-clear-btn"
-                    onClick={() => setSelectMode(true)}
-                    title="Select items to merge into a group"
-                  >
-                    Select to Merge
-                  </button>
-                )}
-                <button
-                  className="queue-clear-btn"
-                  onClick={copyFromLive}
-                  title="Copy current live queue into draft"
-                >
-                  Copy Current
-                </button>
-                <button
-                  className="queue-clear-btn"
-                  onClick={() => onDraftQueueChange([])}
-                  disabled={draftQueue.length === 0}
-                >
-                  Clear Draft
-                </button>
-              </>
+            {draftQueue.length >= 2 && (
+              <span className="queue-drag-hint">Drag to reorder · drop on item to group</span>
             )}
+            <button
+              className="queue-clear-btn"
+              onClick={copyFromLive}
+              title="Copy current live queue into draft"
+            >
+              Copy Current
+            </button>
+            <button
+              className="queue-clear-btn"
+              onClick={() => onDraftQueueChange([])}
+              disabled={draftQueue.length === 0}
+            >
+              Clear Draft
+            </button>
           </div>
         </>
       )}

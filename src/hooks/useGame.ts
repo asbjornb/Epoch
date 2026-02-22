@@ -39,6 +39,8 @@ export type GameAction =
   | { type: "queue_set_group_repeat"; groupId: string; repeat: number }
   | { type: "queue_move_group"; groupId: string; direction: "up" | "down" }
   | { type: "queue_duplicate_group"; groupId: string }
+  | { type: "queue_reorder_segment"; sourceUid: string; targetUid: string; position: "before" | "after" }
+  | { type: "queue_drag_merge"; sourceUid: string; targetUid: string }
   | { type: "queue_load"; queue: QueueEntry[]; repeatLastAction: boolean }
   | { type: "force_collapse"; reason?: string }
   | { type: "import_save"; state: GameState }
@@ -1153,6 +1155,207 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       const run = { ...state.run, queue, currentQueueIndex };
+      return { ...state, run };
+    }
+
+    case "queue_reorder_segment": {
+      // Move a segment (standalone item or group) to before/after another segment
+      const { sourceUid, targetUid, position } = action;
+      const queue = [...state.run.queue];
+      const sourceIdx = queue.findIndex((e) => e.uid === sourceUid);
+      const targetIdx = queue.findIndex((e) => e.uid === targetUid);
+      if (sourceIdx < 0 || targetIdx < 0) return state;
+
+      // Determine the source segment range
+      const sourceEntry = queue[sourceIdx];
+      let sourceStart: number, sourceEnd: number;
+      if (sourceEntry.groupId) {
+        const range = getGroupRange(queue, sourceIdx)!;
+        sourceStart = range.startIdx;
+        sourceEnd = range.endIdx;
+      } else {
+        sourceStart = sourceIdx;
+        sourceEnd = sourceIdx + 1;
+      }
+
+      // Determine target segment start
+      const targetEntry = queue[targetIdx];
+      let targetStart: number;
+      if (targetEntry.groupId) {
+        targetStart = getGroupRange(queue, targetIdx)!.startIdx;
+      } else {
+        targetStart = targetIdx;
+      }
+
+      // Don't reorder onto self
+      if (sourceStart === targetStart) return state;
+
+      // Save active entry info before move
+      let { currentQueueIndex } = state.run;
+      const { currentActionProgress } = state.run;
+      const resolved = (state.run.status === "running" || state.run.status === "paused")
+        ? resolveLogicalIndex(queue, currentQueueIndex) : null;
+      const activeUid = resolved ? queue[resolved.arrayIndex].uid : null;
+      const repeatWithin = resolved ? resolved.repeatWithinEntry : 0;
+      const groupIter = resolved ? resolved.groupIteration : 0;
+
+      // Extract source items
+      const sourceItems = queue.splice(sourceStart, sourceEnd - sourceStart);
+
+      // Recalculate target position after splice
+      let insertIdx: number;
+      if (position === "before") {
+        const newTargetIdx = queue.findIndex((e) => e.uid === targetUid);
+        if (newTargetIdx < 0) return state;
+        const te = queue[newTargetIdx];
+        insertIdx = te.groupId ? getGroupRange(queue, newTargetIdx)!.startIdx : newTargetIdx;
+      } else {
+        const newTargetIdx = queue.findIndex((e) => e.uid === targetUid);
+        if (newTargetIdx < 0) return state;
+        const te = queue[newTargetIdx];
+        insertIdx = te.groupId ? getGroupRange(queue, newTargetIdx)!.endIdx : newTargetIdx + 1;
+      }
+
+      queue.splice(insertIdx, 0, ...sourceItems);
+
+      // Recompute currentQueueIndex
+      if (activeUid) {
+        let logicalPos = 0;
+        let qi = 0;
+        while (qi < queue.length) {
+          const e = queue[qi];
+          if (e.groupId) {
+            const r = getGroupRange(queue, qi)!;
+            let found = false;
+            for (let j = r.startIdx; j < r.endIdx; j++) {
+              if (queue[j].uid === activeUid) {
+                let posInIter = 0;
+                for (let k = r.startIdx; k < j; k++) posInIter += queue[k].repeat;
+                currentQueueIndex = logicalPos + groupIter * r.iterationSize + posInIter + repeatWithin;
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
+            logicalPos += r.iterationSize * r.groupRepeat;
+            qi = r.endIdx;
+          } else {
+            if (e.uid === activeUid) {
+              currentQueueIndex = logicalPos + repeatWithin;
+              break;
+            }
+            if (e.repeat === -1) break;
+            logicalPos += e.repeat;
+            qi++;
+          }
+        }
+      }
+
+      const run = { ...state.run, queue, currentQueueIndex, currentActionProgress };
+      return { ...state, run };
+    }
+
+    case "queue_drag_merge": {
+      // Merge source segment into target segment via drag
+      const { sourceUid, targetUid } = action;
+      const queue = [...state.run.queue];
+      const sourceIdx = queue.findIndex((e) => e.uid === sourceUid);
+      const targetIdx = queue.findIndex((e) => e.uid === targetUid);
+      if (sourceIdx < 0 || targetIdx < 0) return state;
+
+      const sourceEntry = queue[sourceIdx];
+      const targetEntry = queue[targetIdx];
+
+      // Determine source segment
+      let sourceStart: number, sourceEnd: number;
+      if (sourceEntry.groupId) {
+        const range = getGroupRange(queue, sourceIdx)!;
+        sourceStart = range.startIdx;
+        sourceEnd = range.endIdx;
+      } else {
+        sourceStart = sourceIdx;
+        sourceEnd = sourceIdx + 1;
+      }
+
+      // Determine target segment start
+      let targetStart: number;
+      if (targetEntry.groupId) {
+        targetStart = getGroupRange(queue, targetIdx)!.startIdx;
+      } else {
+        targetStart = targetIdx;
+      }
+
+      // Don't merge onto self
+      if (sourceStart === targetStart) return state;
+
+      // Extract source items (removing group info since they'll join the target)
+      const sourceItems = queue.splice(sourceStart, sourceEnd - sourceStart).map((e) => ({
+        ...e,
+        groupId: undefined as string | undefined,
+        groupRepeat: undefined as number | undefined,
+      }));
+
+      // Find target again after splice
+      const newTargetIdx = queue.findIndex((e) => e.uid === targetUid);
+      if (newTargetIdx < 0) return state;
+      const newTargetEntry = queue[newTargetIdx];
+
+      if (newTargetEntry.groupId) {
+        // Target is a group: add source items to the group
+        const range = getGroupRange(queue, newTargetIdx)!;
+        const groupId = newTargetEntry.groupId;
+        const groupRepeat = range.groupRepeat;
+        const insertItems = sourceItems.map((e) => ({ ...e, groupId, groupRepeat }));
+        queue.splice(range.endIdx, 0, ...insertItems);
+      } else {
+        // Both are standalone (or source was a group): create a new group
+        const groupId = makeGroupId();
+        queue[newTargetIdx] = { ...queue[newTargetIdx], groupId, groupRepeat: 1 };
+        const insertItems = sourceItems.map((e) => ({ ...e, groupId, groupRepeat: 1 }));
+        queue.splice(newTargetIdx + 1, 0, ...insertItems);
+      }
+
+      // Recompute currentQueueIndex
+      let { currentQueueIndex } = state.run;
+      const { currentActionProgress: cap } = state.run;
+      if (state.run.status === "running" || state.run.status === "paused") {
+        const resolved = resolveLogicalIndex(state.run.queue, state.run.currentQueueIndex);
+        if (resolved) {
+          const activeUid = state.run.queue[resolved.arrayIndex].uid;
+          let logicalPos = 0;
+          let qi = 0;
+          let found = false;
+          while (qi < queue.length) {
+            const e = queue[qi];
+            if (e.groupId) {
+              const r = getGroupRange(queue, qi)!;
+              for (let j = r.startIdx; j < r.endIdx; j++) {
+                if (queue[j].uid === activeUid) {
+                  let posInIter = 0;
+                  for (let k = r.startIdx; k < j; k++) posInIter += queue[k].repeat;
+                  currentQueueIndex = logicalPos + resolved.groupIteration * r.iterationSize + posInIter + resolved.repeatWithinEntry;
+                  found = true;
+                  break;
+                }
+              }
+              if (found) break;
+              logicalPos += r.iterationSize * r.groupRepeat;
+              qi = r.endIdx;
+            } else {
+              if (e.uid === activeUid) {
+                currentQueueIndex = logicalPos + resolved.repeatWithinEntry;
+                found = true;
+                break;
+              }
+              if (e.repeat === -1) break;
+              logicalPos += e.repeat;
+              qi++;
+            }
+          }
+        }
+      }
+
+      const run = { ...state.run, queue, currentQueueIndex, currentActionProgress: cap };
       return { ...state, run };
     }
 

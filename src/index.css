@@ -864,6 +864,57 @@ h1, h2, h3 {
   padding: 2px 8px 6px;
 }
 
+/* Drag-and-drop segment wrapper */
+.queue-drag-segment {
+  position: relative;
+  cursor: grab;
+  border-radius: 10px;
+  transition: opacity 0.15s;
+}
+
+.queue-drag-segment:active {
+  cursor: grabbing;
+}
+
+.queue-drag-segment.dragging {
+  opacity: 0.35;
+}
+
+/* Drop indicator lines */
+.queue-drag-segment.drop-before::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  z-index: 10;
+  box-shadow: 0 0 6px rgba(196, 154, 60, 0.5);
+}
+
+.queue-drag-segment.drop-after::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  z-index: 10;
+  box-shadow: 0 0 6px rgba(196, 154, 60, 0.5);
+}
+
+/* Merge highlight */
+.queue-drag-segment.drop-merge > .queue-item,
+.queue-drag-segment.drop-merge > .queue-group {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  background: rgba(196, 154, 60, 0.08);
+}
+
 /* Primary variant for queue action buttons (e.g., Merge) */
 .queue-clear-btn.primary {
   background: var(--accent);
@@ -1025,6 +1076,13 @@ h1, h2, h3 {
 .queue-clear-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+.queue-drag-hint {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  opacity: 0.7;
+  flex: 1;
 }
 
 /* Queue Preview */
