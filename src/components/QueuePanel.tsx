@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import type {
   ActionId,
   GameState,
@@ -507,10 +507,16 @@ export function QueuePanel({
   const isPaused = run.status === "paused";
   const isEnded = run.status === "collapsed" || run.status === "victory";
 
-  // Drag-and-drop state
+  // Drag-and-drop state (shared between mouse and touch)
   const [dragSourceSegIdx, setDragSourceSegIdx] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<{ segIdx: number; position: "before" | "after" | "merge" } | null>(null);
   const dragCounterRef = useRef(0);
+
+  // Touch drag state
+  const touchDragActive = useRef(false);
+  const touchStartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const touchSourceSegIdx = useRef<number | null>(null);
 
   const getEffDuration = (actionId: ActionId) => {
     const def = getActionDef(actionId);
@@ -912,6 +918,126 @@ export function QueuePanel({
     dragCounterRef.current = 0;
   };
 
+  // --- Touch drag-and-drop handlers (mobile support) ---
+
+  const clearTouchDrag = useCallback(() => {
+    if (touchStartTimer.current) {
+      clearTimeout(touchStartTimer.current);
+      touchStartTimer.current = null;
+    }
+    touchDragActive.current = false;
+    touchSourceSegIdx.current = null;
+    touchStartPos.current = null;
+    setDragSourceSegIdx(null);
+    setDropTarget(null);
+  }, []);
+
+  const getSegIdxFromPoint = useCallback((x: number, y: number): number | null => {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    const segEl = (el as HTMLElement).closest?.("[data-seg-idx]") as HTMLElement | null;
+    if (!segEl) return null;
+    const idx = parseInt(segEl.dataset.segIdx!, 10);
+    return isNaN(idx) ? null : idx;
+  }, []);
+
+  const computeDropPosition = useCallback((clientY: number, segIdx: number): "before" | "after" | "merge" => {
+    const el = document.querySelector(`[data-seg-idx="${segIdx}"]`);
+    if (!el) return "merge";
+    const rect = el.getBoundingClientRect();
+    const ratio = (clientY - rect.top) / rect.height;
+    if (ratio < 0.25) return "before";
+    if (ratio > 0.75) return "after";
+    return "merge";
+  }, []);
+
+  const handleTouchStart = useCallback((segIdx: number) => (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    touchSourceSegIdx.current = segIdx;
+
+    // Long-press delay to distinguish from scrolling (200ms)
+    touchStartTimer.current = setTimeout(() => {
+      touchDragActive.current = true;
+      setDragSourceSegIdx(segIdx);
+    }, 200);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+
+    // If drag hasn't activated yet, check if finger moved too far (cancel → allow scroll)
+    if (!touchDragActive.current) {
+      if (touchStartPos.current) {
+        const dx = touch.clientX - touchStartPos.current.x;
+        const dy = touch.clientY - touchStartPos.current.y;
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+          // Moved before long-press fired → cancel, let browser scroll
+          if (touchStartTimer.current) {
+            clearTimeout(touchStartTimer.current);
+            touchStartTimer.current = null;
+          }
+          touchSourceSegIdx.current = null;
+          touchStartPos.current = null;
+        }
+      }
+      return;
+    }
+
+    // Active drag – prevent scrolling
+    e.preventDefault();
+
+    const targetSegIdx = getSegIdxFromPoint(touch.clientX, touch.clientY);
+    if (targetSegIdx === null || targetSegIdx === touchSourceSegIdx.current) {
+      setDropTarget(null);
+      return;
+    }
+
+    const position = computeDropPosition(touch.clientY, targetSegIdx);
+    setDropTarget({ segIdx: targetSegIdx, position });
+  }, [getSegIdxFromPoint, computeDropPosition]);
+
+  const handleTouchEnd = (
+    segments: Segment[],
+    onReorder: (sourceUid: string, targetUid: string, position: "before" | "after") => void,
+    onMerge: (sourceUid: string, targetUid: string) => void,
+  ) => () => {
+    if (touchStartTimer.current) {
+      clearTimeout(touchStartTimer.current);
+      touchStartTimer.current = null;
+    }
+
+    if (!touchDragActive.current || touchSourceSegIdx.current === null) {
+      clearTouchDrag();
+      return;
+    }
+
+    const sourceIdx = touchSourceSegIdx.current;
+
+    // Use setState callback to read the latest dropTarget value
+    setDropTarget(currentDropTarget => {
+      if (currentDropTarget && segments.length > 0) {
+        const sourceSeg = segments[sourceIdx];
+        const targetSeg = segments[currentDropTarget.segIdx];
+        if (sourceSeg && targetSeg) {
+          const sourceUid = sourceSeg.entries[0].entry.uid;
+          const targetUid = targetSeg.entries[0].entry.uid;
+          if (currentDropTarget.position === "merge") {
+            onMerge(sourceUid, targetUid);
+          } else {
+            onReorder(sourceUid, targetUid, currentDropTarget.position);
+          }
+        }
+      }
+      return null;
+    });
+
+    touchDragActive.current = false;
+    touchSourceSegIdx.current = null;
+    touchStartPos.current = null;
+    setDragSourceSegIdx(null);
+  };
+
   /** Render queue items, wrapping groups in QueueGroup components, with drag-and-drop. */
   const renderQueueItems = (
     q: QueueEntry[],
@@ -935,6 +1061,7 @@ export function QueuePanel({
     const segments = buildSegments(q);
     const elements: React.ReactNode[] = [];
     const dropHandler = handleDrop(segments, dragCallbacks.onReorder, dragCallbacks.onMerge);
+    const touchEndHandler = handleTouchEnd(segments, dragCallbacks.onReorder, dragCallbacks.onMerge);
 
     for (let segIdx = 0; segIdx < segments.length; segIdx++) {
       const seg = segments[segIdx];
@@ -1041,6 +1168,7 @@ export function QueuePanel({
         <div
           key={segKey}
           className={dragClass}
+          data-seg-idx={segIdx}
           draggable
           onDragStart={handleDragStart(segIdx)}
           onDragOver={handleDragOver(segIdx)}
@@ -1048,6 +1176,9 @@ export function QueuePanel({
           onDragLeave={handleDragLeave()}
           onDrop={dropHandler()}
           onDragEnd={handleDragEnd}
+          onTouchStart={handleTouchStart(segIdx)}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={touchEndHandler}
         >
           {segContent}
         </div>,
@@ -1253,7 +1384,7 @@ export function QueuePanel({
 
           <div className="queue-actions-bar">
             {queue.length >= 2 && (
-              <span className="queue-drag-hint">Drag to reorder · drop on item to group</span>
+              <span className="queue-drag-hint">Hold & drag to reorder · drop on item to group</span>
             )}
             <button
               className="queue-clear-btn"
@@ -1329,7 +1460,7 @@ export function QueuePanel({
 
           <div className="queue-actions-bar">
             {draftQueue.length >= 2 && (
-              <span className="queue-drag-hint">Drag to reorder · drop on item to group</span>
+              <span className="queue-drag-hint">Hold & drag to reorder · drop on item to group</span>
             )}
             <button
               className="queue-clear-btn"
