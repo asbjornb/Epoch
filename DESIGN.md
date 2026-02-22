@@ -126,8 +126,7 @@ Each cycle contains milestone checks.
 
 Winter event:
 
-- Farming disabled
-- High food consumption
+- Farming disabled (food becomes scarce)
 - Requires food stockpile + storage
 - Generally everyone will die at this gate for a long time until better
   technology allows minor food gain during winter or better conservation of

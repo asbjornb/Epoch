@@ -21,7 +21,6 @@ import {
 import type { DisasterInfo } from "../types/game.ts";
 
 const FOOD_PER_POP = 1;
-const WINTER_FOOD_PER_POP = 2; // doubled consumption during Great Cold
 const POP_GROWTH_THRESHOLD = 20; // surplus food needed for pop growth
 const RAIDER_YEAR = 1500;
 const RAIDER_STRENGTH_REQUIRED = 250;
@@ -290,10 +289,8 @@ export function tick(state: GameState): GameState {
 
   const isWinter = run.year >= WINTER_START && run.year <= WINTER_END;
 
-  // Food consumption (doubled during winter)
-  // Eat from normal food first, then preserved food
-  const foodPerPop = isWinter ? WINTER_FOOD_PER_POP : FOOD_PER_POP;
-  let foodNeeded = resources.population * foodPerPop;
+  // Food consumption — eat from normal food first, then preserved food
+  let foodNeeded = resources.population * FOOD_PER_POP;
   const fromFood = Math.min(resources.food, foodNeeded);
   resources.food -= fromFood;
   foodNeeded -= fromFood;
@@ -513,7 +510,7 @@ export function tick(state: GameState): GameState {
     }
     const winterSpoilage = calculateSpoilage(resources.food, resources.foodStorage);
     const preservedNote = resources.preservedFood > 0 ? ` Preserved: ${Math.floor(resources.preservedFood)}.` : "";
-    const winterMsg = `The Great Cold begins. Farming disabled, food consumption doubled. Food: ${Math.floor(resources.food)} (spoilage: ${winterSpoilage.toFixed(1)}/yr).${preservedNote}`;
+    const winterMsg = `The Great Cold begins. Farming disabled, food grows scarce. Food: ${Math.floor(resources.food)} (spoilage: ${winterSpoilage.toFixed(1)}/yr).${preservedNote}`;
     log.push({ year: run.year, message: winterMsg, type: "warning" });
     const firstTime = !state.seenEventTypes.includes("winter_start");
     const shouldPause = !state.autoDismissEventTypes.includes("winter_start");
@@ -812,8 +809,7 @@ export function simulateQueuePreview(
     const isWinter = hasSeenWinter && year >= WINTER_START && year <= WINTER_END;
 
     // Food consumption — eat from normal food first, then preserved
-    const foodPerPop = isWinter ? WINTER_FOOD_PER_POP : FOOD_PER_POP;
-    let previewFoodNeeded = resources.population * foodPerPop;
+    let previewFoodNeeded = resources.population * FOOD_PER_POP;
     const previewFromFood = Math.min(resources.food, previewFoodNeeded);
     resources.food -= previewFromFood;
     previewFoodNeeded -= previewFromFood;
