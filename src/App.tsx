@@ -129,9 +129,6 @@ function App() {
         </div>
         <div className="main-sidebar">
           <SkillsPanel skills={state.skills} />
-          <div className="mobile-bt-panel">
-            <BuildingsTechsPanel resources={state.run.resources} />
-          </div>
         </div>
       </main>
 
@@ -156,6 +153,7 @@ function App() {
               </button>
             </div>
             <ActionPalette state={state} onActionClick={handleActionClick} currentQueue={draftMode ? draftQueue : state.run.queue} />
+            <BuildingsTechsPanel resources={state.run.resources} defaultCollapsed />
           </div>
         </div>
       )}
