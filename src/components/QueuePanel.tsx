@@ -3,13 +3,14 @@ import type {
   ActionId,
   GameState,
   QueueEntry,
+  SavedQueue,
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { isActionUnlocked } from "../engine/skills.ts";
 import { simulateQueuePreview, getEffectiveDuration, getTotalDefense, getBuildingCount, getScaledWoodCost } from "../engine/simulation.ts";
 import { resolveLogicalIndex, getGroupRange, getQueueLogicalSize } from "../engine/queueGroups.ts";
 import type { GameAction } from "../hooks/useGame.ts";
-import { makeGroupId, makeUid } from "../hooks/useGame.ts";
+import { makeGroupId, makeUid, loadSavedQueues, persistSavedQueues, stripQueueForSave } from "../hooks/useGame.ts";
 
 
 interface QueuePanelProps {
@@ -487,6 +488,176 @@ function buildSegments(queue: QueueEntry[]): Segment[] {
     }
   }
   return segments;
+}
+
+/** Saved queues section: save current queue as a named preset, load or delete saved presets. */
+function SavedQueuesSection({
+  currentQueue,
+  repeatLastAction,
+  onLoad,
+}: {
+  currentQueue: QueueEntry[];
+  repeatLastAction: boolean;
+  onLoad: (queue: QueueEntry[], repeatLastAction: boolean) => void;
+}) {
+  const [savedQueues, setSavedQueues] = useState<SavedQueue[]>(loadSavedQueues);
+  const [expanded, setExpanded] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [showSaveInput, setShowSaveInput] = useState(false);
+  const saveInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSave = () => {
+    const name = saveName.trim();
+    if (!name || currentQueue.length === 0) return;
+    const newEntry: SavedQueue = {
+      name,
+      queue: stripQueueForSave(currentQueue),
+      repeatLastAction,
+    };
+    const updated = [...savedQueues, newEntry];
+    setSavedQueues(updated);
+    persistSavedQueues(updated);
+    setSaveName("");
+    setShowSaveInput(false);
+    setExpanded(true);
+  };
+
+  const handleDelete = (index: number) => {
+    const updated = savedQueues.filter((_, i) => i !== index);
+    setSavedQueues(updated);
+    persistSavedQueues(updated);
+  };
+
+  const handleLoad = (sq: SavedQueue) => {
+    // Hydrate entries with fresh UIDs and group IDs
+    const groupIdMap = new Map<string, string>();
+    const hydrated: QueueEntry[] = sq.queue.map((e) => {
+      const entry: QueueEntry = { uid: makeUid(), actionId: e.actionId, repeat: e.repeat };
+      if (e.groupId) {
+        if (!groupIdMap.has(e.groupId)) {
+          groupIdMap.set(e.groupId, makeGroupId());
+        }
+        entry.groupId = groupIdMap.get(e.groupId);
+        entry.groupRepeat = e.groupRepeat;
+      }
+      return entry;
+    });
+    onLoad(hydrated, sq.repeatLastAction);
+  };
+
+  const handleOverwrite = (index: number) => {
+    if (currentQueue.length === 0) return;
+    const updated = [...savedQueues];
+    updated[index] = {
+      ...updated[index],
+      queue: stripQueueForSave(currentQueue),
+      repeatLastAction,
+    };
+    setSavedQueues(updated);
+    persistSavedQueues(updated);
+  };
+
+  return (
+    <div className="saved-queues-section">
+      <div className="saved-queues-header">
+        <button
+          className="saved-queues-toggle"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <span className="saved-queues-arrow">{expanded ? "\u25BE" : "\u25B8"}</span>
+          Saved Queues
+          {savedQueues.length > 0 && (
+            <span className="saved-queues-count">({savedQueues.length})</span>
+          )}
+        </button>
+        {!showSaveInput ? (
+          <button
+            className="queue-clear-btn"
+            onClick={() => {
+              setShowSaveInput(true);
+              setExpanded(true);
+              requestAnimationFrame(() => saveInputRef.current?.focus());
+            }}
+            disabled={currentQueue.length === 0}
+            title="Save current queue as a preset"
+          >
+            Save As...
+          </button>
+        ) : (
+          <div className="saved-queues-save-row">
+            <input
+              ref={saveInputRef}
+              type="text"
+              className="saved-queues-name-input"
+              placeholder="Queue name"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") { setShowSaveInput(false); setSaveName(""); }
+              }}
+              maxLength={30}
+            />
+            <button
+              className="queue-clear-btn"
+              onClick={handleSave}
+              disabled={!saveName.trim()}
+            >
+              Save
+            </button>
+            <button
+              className="queue-clear-btn"
+              onClick={() => { setShowSaveInput(false); setSaveName(""); }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+      {expanded && (
+        <div className="saved-queues-list">
+          {savedQueues.length === 0 ? (
+            <div className="saved-queues-empty">No saved queues yet.</div>
+          ) : (
+            savedQueues.map((sq, i) => (
+              <div key={i} className="saved-queue-item">
+                <div className="saved-queue-info">
+                  <span className="saved-queue-name">{sq.name}</span>
+                  <span className="saved-queue-meta">
+                    {sq.queue.length} action{sq.queue.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <div className="saved-queue-actions">
+                  <button
+                    className="queue-clear-btn"
+                    onClick={() => handleLoad(sq)}
+                    title="Load this queue"
+                  >
+                    Load
+                  </button>
+                  <button
+                    className="queue-clear-btn"
+                    onClick={() => handleOverwrite(i)}
+                    disabled={currentQueue.length === 0}
+                    title="Overwrite with current queue"
+                  >
+                    Update
+                  </button>
+                  <button
+                    className="queue-btn danger"
+                    onClick={() => handleDelete(i)}
+                    title="Delete saved queue"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function QueuePanel({
@@ -1394,6 +1565,14 @@ export function QueuePanel({
               Clear Queue
             </button>
           </div>
+
+          <SavedQueuesSection
+            currentQueue={queue}
+            repeatLastAction={run.repeatLastAction}
+            onLoad={(hydrated, rla) => {
+              dispatch({ type: "queue_load", queue: hydrated, repeatLastAction: rla });
+            }}
+          />
         </>
       )}
 
@@ -1477,6 +1656,15 @@ export function QueuePanel({
               Clear Draft
             </button>
           </div>
+
+          <SavedQueuesSection
+            currentQueue={draftQueue}
+            repeatLastAction={draftRepeatLast}
+            onLoad={(hydrated, rla) => {
+              onDraftQueueChange(hydrated);
+              onDraftRepeatLastChange(rla);
+            }}
+          />
         </>
       )}
     </div>

@@ -5,6 +5,8 @@ import type {
   ActionId,
   RunHistoryEntry,
   SkillName,
+  SavedQueue,
+  SavedQueueEntry,
 } from "../types/game.ts";
 import { ACTION_DEFS, getActionDef } from "../types/actions.ts";
 import { initialSkills, isActionUnlocked } from "../engine/skills.ts";
@@ -180,6 +182,32 @@ function loadTotalYearsPlayed(): number {
     if (saved) return parseInt(saved, 10);
   } catch { /* ignore */ }
   return 0;
+}
+
+const SAVED_QUEUES_KEY = "epoch_saved_queues";
+
+export function loadSavedQueues(): SavedQueue[] {
+  try {
+    const saved = localStorage.getItem(SAVED_QUEUES_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return [];
+}
+
+export function persistSavedQueues(queues: SavedQueue[]): void {
+  try {
+    localStorage.setItem(SAVED_QUEUES_KEY, JSON.stringify(queues));
+  } catch { /* ignore quota errors */ }
+}
+
+/** Strip runtime UIDs from queue entries for persistent storage. */
+export function stripQueueForSave(queue: QueueEntry[]): SavedQueueEntry[] {
+  return queue.map(({ actionId, repeat, groupId, groupRepeat }) => {
+    const entry: SavedQueueEntry = { actionId, repeat };
+    if (groupId) entry.groupId = groupId;
+    if (groupRepeat !== undefined) entry.groupRepeat = groupRepeat;
+    return entry;
+  });
 }
 
 function cloneSkills(skills: GameState["skills"]): GameState["skills"] {
@@ -1431,6 +1459,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       localStorage.removeItem("epoch_run_history");
       localStorage.removeItem("epoch_best_run_year");
       localStorage.removeItem("epoch_total_years_played");
+      localStorage.removeItem(SAVED_QUEUES_KEY);
       const skills = initialSkills();
       return {
         skills,
