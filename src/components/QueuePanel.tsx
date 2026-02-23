@@ -494,7 +494,7 @@ function QueuePreviewDisplay({
   return (
     <div className={`queue-preview${preview.collapsed ? " queue-preview-collapsed" : ""}`}>
       <div className="queue-preview-header">
-        <span className="queue-preview-label">{label ?? "Projected outcome"}</span>
+        <span className="queue-preview-label">{label ?? "Queue projection"}</span>
         <span className="queue-preview-years">
           {preview.yearsUsed.toLocaleString()} years
           {preview.collapsed && " (collapses)"}
