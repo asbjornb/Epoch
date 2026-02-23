@@ -559,15 +559,20 @@ function SavedQueuesSection({
   currentQueue,
   repeatLastAction,
   onLoad,
+  skills,
+  encounteredDisasters,
 }: {
   currentQueue: QueueEntry[];
   repeatLastAction: boolean;
   onLoad: (queue: QueueEntry[], repeatLastAction: boolean) => void;
+  skills: GameState["skills"];
+  encounteredDisasters: string[];
 }) {
   const [savedQueues, setSavedQueues] = useState<SavedQueue[]>(loadSavedQueues);
   const [expanded, setExpanded] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [showSaveInput, setShowSaveInput] = useState(false);
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const saveInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = () => {
@@ -620,6 +625,27 @@ function SavedQueuesSection({
     setSavedQueues(updated);
     persistSavedQueues(updated);
   };
+
+  // Hydrate a saved queue for preview display
+  const hydrateForPreview = useCallback((sq: SavedQueue): QueueEntry[] => {
+    const groupIdMap = new Map<string, string>();
+    return sq.queue.map((e) => {
+      const entry: QueueEntry = { uid: makeUid(), actionId: e.actionId, repeat: e.repeat };
+      if (e.groupId) {
+        if (!groupIdMap.has(e.groupId)) {
+          groupIdMap.set(e.groupId, makeGroupId());
+        }
+        entry.groupId = groupIdMap.get(e.groupId);
+        entry.groupRepeat = e.groupRepeat;
+      }
+      return entry;
+    });
+  }, []);
+
+  const previewQueue = useMemo(() => {
+    if (previewIdx === null || previewIdx >= savedQueues.length) return null;
+    return hydrateForPreview(savedQueues[previewIdx]);
+  }, [previewIdx, savedQueues, hydrateForPreview]);
 
   return (
     <div className="saved-queues-section">
@@ -683,40 +709,116 @@ function SavedQueuesSection({
           {savedQueues.length === 0 ? (
             <div className="saved-queues-empty">No saved queues yet.</div>
           ) : (
-            savedQueues.map((sq, i) => (
-              <div key={i} className="saved-queue-item">
-                <div className="saved-queue-info">
-                  <span className="saved-queue-name">{sq.name}</span>
-                  <span className="saved-queue-meta">
-                    {sq.queue.length} action{sq.queue.length !== 1 ? "s" : ""}
-                  </span>
+            savedQueues.map((sq, i) => {
+              const isPreviewing = previewIdx === i;
+              // Build compact action summary for preview
+              const actionSummary: { name: string; repeat: number; color: string; grouped: boolean; groupRepeat?: number; isGroupStart?: boolean; isGroupEnd?: boolean }[] = [];
+              if (isPreviewing) {
+                let j = 0;
+                while (j < sq.queue.length) {
+                  const e = sq.queue[j];
+                  if (e.groupId) {
+                    // Gather all entries in this group
+                    const gid = e.groupId;
+                    const groupStart = j;
+                    while (j < sq.queue.length && sq.queue[j].groupId === gid) {
+                      const def = getActionDef(sq.queue[j].actionId);
+                      actionSummary.push({
+                        name: def?.name ?? sq.queue[j].actionId,
+                        repeat: sq.queue[j].repeat,
+                        color: SKILL_COLORS[def?.skill ?? "farming"],
+                        grouped: true,
+                        groupRepeat: sq.queue[j].groupRepeat ?? 1,
+                        isGroupStart: j === groupStart,
+                        isGroupEnd: j + 1 >= sq.queue.length || sq.queue[j + 1].groupId !== gid,
+                      });
+                      j++;
+                    }
+                  } else {
+                    const def = getActionDef(e.actionId);
+                    actionSummary.push({
+                      name: def?.name ?? e.actionId,
+                      repeat: e.repeat,
+                      color: SKILL_COLORS[def?.skill ?? "farming"],
+                      grouped: false,
+                    });
+                    j++;
+                  }
+                }
+              }
+
+              return (
+                <div key={i} className={`saved-queue-entry${isPreviewing ? " previewing" : ""}`}>
+                  <div className="saved-queue-item">
+                    <div className="saved-queue-info">
+                      <span className="saved-queue-name">{sq.name}</span>
+                      <span className="saved-queue-meta">
+                        {sq.queue.length} action{sq.queue.length !== 1 ? "s" : ""}
+                        {sq.repeatLastAction ? " · repeat last" : ""}
+                      </span>
+                    </div>
+                    <div className="saved-queue-actions">
+                      <button
+                        className={`queue-clear-btn${isPreviewing ? " active" : ""}`}
+                        onClick={() => setPreviewIdx(isPreviewing ? null : i)}
+                        title={isPreviewing ? "Hide preview" : "Preview this queue"}
+                      >
+                        {isPreviewing ? "Hide" : "Preview"}
+                      </button>
+                      <button
+                        className="queue-clear-btn"
+                        onClick={() => handleLoad(sq)}
+                        title="Load this queue"
+                      >
+                        Load
+                      </button>
+                      <button
+                        className="queue-clear-btn"
+                        onClick={() => handleOverwrite(i)}
+                        disabled={currentQueue.length === 0}
+                        title="Overwrite with current queue"
+                      >
+                        Update
+                      </button>
+                      <button
+                        className="queue-btn danger"
+                        onClick={() => handleDelete(i)}
+                        title="Delete saved queue"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                  {isPreviewing && previewQueue && (
+                    <div className="saved-queue-preview">
+                      <div className="saved-queue-preview-actions">
+                        {actionSummary.map((a, k) => (
+                          <div
+                            key={k}
+                            className={`saved-queue-preview-action${a.grouped ? " grouped" : ""}${a.isGroupStart ? " group-start" : ""}${a.isGroupEnd ? " group-end" : ""}`}
+                          >
+                            <span className="queue-item-dot" style={{ background: a.color }} />
+                            <span className="saved-queue-preview-action-name">{a.name}</span>
+                            {a.repeat > 1 && (
+                              <span className="saved-queue-preview-action-repeat">&times;{a.repeat}</span>
+                            )}
+                            {a.isGroupEnd && a.groupRepeat && a.groupRepeat > 1 && (
+                              <span className="saved-queue-preview-group-repeat">group &times;{a.groupRepeat}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <QueuePreviewDisplay
+                        queue={previewQueue}
+                        skills={skills}
+                        encounteredDisasters={encounteredDisasters}
+                        label="Saved queue projection"
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="saved-queue-actions">
-                  <button
-                    className="queue-clear-btn"
-                    onClick={() => handleLoad(sq)}
-                    title="Load this queue"
-                  >
-                    Load
-                  </button>
-                  <button
-                    className="queue-clear-btn"
-                    onClick={() => handleOverwrite(i)}
-                    disabled={currentQueue.length === 0}
-                    title="Overwrite with current queue"
-                  >
-                    Update
-                  </button>
-                  <button
-                    className="queue-btn danger"
-                    onClick={() => handleDelete(i)}
-                    title="Delete saved queue"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
@@ -1689,6 +1791,8 @@ export function QueuePanel({
             onLoad={(hydrated, rla) => {
               dispatch({ type: "queue_load", queue: hydrated, repeatLastAction: rla });
             }}
+            skills={skills}
+            encounteredDisasters={state.encounteredDisasters}
           />
         </>
       )}
@@ -1781,6 +1885,8 @@ export function QueuePanel({
               onDraftQueueChange(hydrated);
               onDraftRepeatLastChange(rla);
             }}
+            skills={skills}
+            encounteredDisasters={state.encounteredDisasters}
           />
         </>
       )}
