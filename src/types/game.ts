@@ -142,6 +142,20 @@ export interface EndedRunSnapshot {
 
 export type AchievementId = "reach_raid" | "survive_raid" | "reach_winter";
 
+/** A stripped-down queue entry for persistent storage (no runtime UIDs). */
+export interface SavedQueueEntry {
+  actionId: ActionId;
+  repeat: number;
+  groupId?: string;
+  groupRepeat?: number;
+}
+
+export interface SavedQueue {
+  name: string;
+  queue: SavedQueueEntry[];
+  repeatLastAction: boolean;
+}
+
 export interface GameState {
   skills: Skills;
   run: RunState;
