@@ -864,6 +864,38 @@ h1, h2, h3 {
   padding: 2px 8px 6px;
 }
 
+/* Collapsed group */
+.queue-collapse-btn {
+  font-size: 0.55rem;
+  width: 20px;
+  height: 20px;
+}
+
+.queue-group-collapsed .queue-group-header {
+  border-bottom: none;
+}
+
+.queue-group-summary {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+}
+
+.queue-group-summary-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  z-index: 1;
+}
+
+.queue-group-summary-meta {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
 /* Drag-and-drop segment wrapper */
 .queue-drag-segment {
   position: relative;
