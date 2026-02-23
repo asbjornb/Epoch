@@ -14,7 +14,7 @@ interface BuildingEntry {
   color: string;
 }
 
-function getBuildings(resources: Resources): BuildingEntry[] {
+export function getBuildings(resources: Resources): BuildingEntry[] {
   const buildings: BuildingEntry[] = [];
   const huts = getBuildingCount(resources, "build_hut");
   if (huts > 0) {
