@@ -29,6 +29,8 @@ const WINTER_START = 4000;
 const WINTER_END = 4500;
 const INITIAL_MAX_POP = 2;
 const INITIAL_FOOD_STORAGE = 200;
+const LOOT_BASE_STRENGTH = 50; // military strength needed for first loot expedition
+const LOOT_STRENGTH_STEP = 50; // additional strength needed per subsequent loot
 const SPOILAGE_DIVISOR = 400; // tuning constant for quadratic spoilage curve
 const PRESERVED_SPOILAGE_DIVISOR = 800; // preserved food spoils at half the rate
 
@@ -87,6 +89,8 @@ export function createInitialResources(): Resources {
     foodStorage: INITIAL_FOOD_STORAGE,
     granariesBuilt: 0,
     researchedTechs: [],
+    locationsDiscovered: 0,
+    locationsLooted: 0,
   };
 }
 
@@ -211,6 +215,20 @@ export function getTotalDefense(resources: Resources): number {
   const wallMult = getWallDefenseMultiplier(resources.wallsBuilt);
   const fortMult = getFortificationMultiplier(resources.researchedTechs);
   return resources.militaryStrength * tacticsMult * wallMult * fortMult;
+}
+
+/** Military strength required for the next loot expedition */
+export function getLootStrengthRequired(locationsLooted: number): number {
+  return LOOT_BASE_STRENGTH + LOOT_STRENGTH_STEP * locationsLooted;
+}
+
+/** Food and wood reward for a loot expedition */
+export function getLootRewards(locationsLooted: number): { food: number; wood: number } {
+  const expeditionNum = locationsLooted + 1;
+  return {
+    food: 15 * expeditionNum,
+    wood: 8 * expeditionNum,
+  };
 }
 
 /** Check if an action is a research tech (single-use) */
@@ -393,7 +411,7 @@ export function tick(state: GameState): GameState {
 
           // XP per tick (barracks multiply military XP during training/scouting)
           let xpAmount = 1;
-          if (entry.actionId === "train_militia" || entry.actionId === "scout") {
+          if (entry.actionId === "train_militia" || entry.actionId === "scout" || entry.actionId === "loot") {
             xpAmount *= getBarracksXpMultiplier(resources.barracksBuilt);
           }
           skills[def.skill] = addXp(skills[def.skill], xpAmount);
@@ -677,6 +695,29 @@ function applyActionCompletion(
       }
       log.push({ year, message: "Tactics researched. Military strength +15%.", type: "info" });
       break;
+    case "scout":
+      resources.locationsDiscovered++;
+      log.push({ year, message: `Scouting complete. Discovered a new location (${resources.locationsDiscovered - resources.locationsLooted} available).`, type: "info" });
+      break;
+    case "loot": {
+      const available = resources.locationsDiscovered - resources.locationsLooted;
+      if (available <= 0) {
+        log.push({ year, message: "Loot expedition failed — no scouted locations remaining. Scout to discover more.", type: "warning" });
+        break;
+      }
+      const requiredStrength = getLootStrengthRequired(resources.locationsLooted);
+      if (resources.militaryStrength < requiredStrength) {
+        log.push({ year, message: `Loot expedition failed — need ${requiredStrength} military strength (have ${Math.floor(resources.militaryStrength)}). Train more militia.`, type: "warning" });
+        break;
+      }
+      const rewards = getLootRewards(resources.locationsLooted);
+      resources.food += rewards.food;
+      resources.wood += rewards.wood;
+      resources.locationsLooted++;
+      const nextReq = getLootStrengthRequired(resources.locationsLooted);
+      log.push({ year, message: `Loot expedition #${resources.locationsLooted} succeeded! Gained ${rewards.food} food and ${rewards.wood} wood. Next expedition needs ${nextReq} military strength.`, type: "success" });
+      break;
+    }
     case "cure_food": {
       const cureAmount = 60 + skills.farming.level * 5;
       const amount = Math.min(cureAmount, resources.food);
@@ -743,6 +784,19 @@ function applyCompletionPreview(
         resources.researchedTechs = [...resources.researchedTechs, "research_tactics"];
       }
       break;
+    case "scout":
+      resources.locationsDiscovered++;
+      break;
+    case "loot": {
+      const available = resources.locationsDiscovered - resources.locationsLooted;
+      if (available > 0 && resources.militaryStrength >= getLootStrengthRequired(resources.locationsLooted)) {
+        const rewards = getLootRewards(resources.locationsLooted);
+        resources.food += rewards.food;
+        resources.wood += rewards.wood;
+        resources.locationsLooted++;
+      }
+      break;
+    }
     case "cure_food": {
       const cureAmount = 60 + skills.farming.level * 5;
       const amount = Math.min(cureAmount, resources.food);
