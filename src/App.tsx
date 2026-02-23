@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useGame, makeUid, getIncompatibleSave, clearIncompatibleSave } from "./hooks/useGame.ts";
+import { useGame, makeUid, makeGroupId, getIncompatibleSave, clearIncompatibleSave } from "./hooks/useGame.ts";
 import { useWakeLock } from "./hooks/useWakeLock.ts";
 import { QueuePanel, ActionPalette } from "./components/QueuePanel.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
@@ -11,9 +11,11 @@ import { RunSummaryModal } from "./components/RunSummaryModal.tsx";
 import { LogModal } from "./components/LogModal.tsx";
 import { SettingsPanel } from "./components/SettingsPanel.tsx";
 import { IncompatibleSaveModal } from "./components/IncompatibleSaveModal.tsx";
+import { SharedQueueModal } from "./components/SharedQueueModal.tsx";
 import { HintButton } from "./components/HintButton.tsx";
 import { BuildingsTechsPanel, getBuildings } from "./components/BuildingsTechsPanel.tsx";
 import { UpdateBanner } from "./components/UpdateBanner.tsx";
+import { parseShareUrl } from "./engine/queueUrl.ts";
 import { getActionDef } from "./types/actions.ts";
 import type { ActionId, QueueEntry } from "./types/game.ts";
 
@@ -26,6 +28,10 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [incompatibleSave, setIncompatibleSave] = useState<string | null>(getIncompatibleSave);
+
+  // Shared queue from URL
+  const [sharedQueue] = useState(() => parseShareUrl());
+  const [sharedQueueDismissed, setSharedQueueDismissed] = useState(false);
 
   // Draft queue state
   const [draftMode, setDraftMode] = useState(false);
@@ -77,6 +83,34 @@ function App() {
     dispatch({ type: "set_auto_dismiss_run_summary", value: true });
     dispatch({ type: "dismiss_summary" });
   }, [dispatch]);
+
+  const handleLoadSharedQueue = useCallback(() => {
+    if (!sharedQueue) return;
+    // Hydrate saved entries into QueueEntry[] with fresh UIDs
+    const groupIdMap = new Map<string, string>();
+    const hydrated: QueueEntry[] = sharedQueue.queue.map((e) => {
+      const entry: QueueEntry = { uid: makeUid(), actionId: e.actionId, repeat: e.repeat };
+      if (e.groupId) {
+        if (!groupIdMap.has(e.groupId)) {
+          groupIdMap.set(e.groupId, makeGroupId());
+        }
+        entry.groupId = groupIdMap.get(e.groupId);
+        entry.groupRepeat = e.groupRepeat;
+      }
+      return entry;
+    });
+    setDraftQueue(hydrated);
+    setDraftRepeatLast(sharedQueue.repeatLastAction);
+    setDraftMode(true);
+    setSharedQueueDismissed(true);
+    // Clean the hash from the URL
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }, [sharedQueue]);
+
+  const handleDismissSharedQueue = useCallback(() => {
+    setSharedQueueDismissed(true);
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }, []);
 
   return (
     <div className="app">
@@ -251,6 +285,17 @@ function App() {
           dispatch={dispatch}
           onClose={() => setSettingsOpen(false)}
           wakeLock={wakeLock}
+        />
+      )}
+
+      {/* Shared queue import modal */}
+      {sharedQueue && !sharedQueueDismissed && (
+        <SharedQueueModal
+          queue={sharedQueue.queue}
+          repeatLastAction={sharedQueue.repeatLastAction}
+          unlockedActions={state.unlockedActions}
+          onLoad={handleLoadSharedQueue}
+          onDismiss={handleDismissSharedQueue}
         />
       )}
 

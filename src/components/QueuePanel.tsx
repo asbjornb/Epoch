@@ -11,6 +11,7 @@ import { simulateQueuePreview, getEffectiveDuration, getTotalDefense, getBuildin
 import { resolveLogicalIndex, getGroupRange, getQueueLogicalSize } from "../engine/queueGroups.ts";
 import type { GameAction } from "../hooks/useGame.ts";
 import { makeGroupId, makeUid, loadSavedQueues, persistSavedQueues, stripQueueForSave } from "../hooks/useGame.ts";
+import { buildShareUrl } from "../engine/queueUrl.ts";
 
 
 interface QueuePanelProps {
@@ -843,6 +844,20 @@ export function QueuePanel({
   const isRunning = run.status === "running";
   const isPaused = run.status === "paused";
   const isEnded = run.status === "collapsed" || run.status === "victory";
+
+  // Share button feedback
+  const [shareCopied, setShareCopied] = useState(false);
+  const shareCopiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleShare = (q: QueueEntry[], repeatLast: boolean) => {
+    const url = buildShareUrl(q, repeatLast);
+    if (!url) return;
+    navigator.clipboard.writeText(url).then(() => {
+      if (shareCopiedTimer.current) clearTimeout(shareCopiedTimer.current);
+      setShareCopied(true);
+      shareCopiedTimer.current = setTimeout(() => setShareCopied(false), 2000);
+    });
+  };
 
   // Collapsed groups (UI-only, set of groupIds)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -1778,6 +1793,14 @@ export function QueuePanel({
             )}
             <button
               className="queue-clear-btn"
+              onClick={() => handleShare(queue, run.repeatLastAction)}
+              disabled={queue.length === 0}
+              title="Copy a shareable link for this queue"
+            >
+              {shareCopied ? "Copied!" : "Share"}
+            </button>
+            <button
+              className="queue-clear-btn"
               onClick={() => dispatch({ type: "queue_clear" })}
               disabled={queue.length === 0}
             >
@@ -1862,6 +1885,14 @@ export function QueuePanel({
             {draftQueue.length >= 2 && (
               <span className="queue-drag-hint">Hold & drag to reorder · drop on item to group</span>
             )}
+            <button
+              className="queue-clear-btn"
+              onClick={() => handleShare(draftQueue, draftRepeatLast)}
+              disabled={draftQueue.length === 0}
+              title="Copy a shareable link for this draft queue"
+            >
+              {shareCopied ? "Copied!" : "Share"}
+            </button>
             <button
               className="queue-clear-btn"
               onClick={copyFromLive}
