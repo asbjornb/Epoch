@@ -12,7 +12,7 @@ import { LogModal } from "./components/LogModal.tsx";
 import { SettingsPanel } from "./components/SettingsPanel.tsx";
 import { IncompatibleSaveModal } from "./components/IncompatibleSaveModal.tsx";
 import { HintButton } from "./components/HintButton.tsx";
-import { BuildingsTechsPanel } from "./components/BuildingsTechsPanel.tsx";
+import { BuildingsTechsPanel, getBuildings } from "./components/BuildingsTechsPanel.tsx";
 import { getActionDef } from "./types/actions.ts";
 import type { ActionId, QueueEntry } from "./types/game.ts";
 
@@ -21,6 +21,7 @@ function App() {
   const wakeLock = useWakeLock();
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [buildingsOpen, setBuildingsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [incompatibleSave, setIncompatibleSave] = useState<string | null>(getIncompatibleSave);
@@ -132,15 +133,27 @@ function App() {
         </div>
       </main>
 
-      {/* Mobile actions drawer toggle */}
-      <button
-        className="actions-drawer-toggle"
-        onClick={() => setActionsOpen(true)}
-        aria-label="Open actions"
-      >
-        <span className="actions-drawer-toggle-icon">+</span>
-        <span className="actions-drawer-toggle-text">Actions</span>
-      </button>
+      {/* Mobile side toggle buttons */}
+      <div className="mobile-side-toggles">
+        <button
+          className="side-drawer-toggle"
+          onClick={() => setActionsOpen(true)}
+          aria-label="Open actions"
+        >
+          <span className="side-drawer-toggle-icon">+</span>
+          <span className="side-drawer-toggle-text">Actions</span>
+        </button>
+        {(getBuildings(state.run.resources).length > 0 || state.run.resources.researchedTechs.length > 0) && (
+          <button
+            className="side-drawer-toggle"
+            onClick={() => setBuildingsOpen(true)}
+            aria-label="Open buildings & tech"
+          >
+            <span className="side-drawer-toggle-icon">⌂</span>
+            <span className="side-drawer-toggle-text">Housing</span>
+          </button>
+        )}
+      </div>
 
       {/* Mobile actions drawer */}
       {actionsOpen && (
@@ -153,7 +166,21 @@ function App() {
               </button>
             </div>
             <ActionPalette state={state} onActionClick={handleActionClick} currentQueue={draftMode ? draftQueue : state.run.queue} />
-            <BuildingsTechsPanel resources={state.run.resources} defaultCollapsed />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile buildings & tech drawer */}
+      {buildingsOpen && (
+        <div className="actions-drawer-overlay" onClick={() => setBuildingsOpen(false)}>
+          <div className="actions-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="actions-drawer-header">
+              <h3>Buildings & Tech</h3>
+              <button className="actions-drawer-close" onClick={() => setBuildingsOpen(false)}>
+                ✕
+              </button>
+            </div>
+            <BuildingsTechsPanel resources={state.run.resources} />
           </div>
         </div>
       )}
