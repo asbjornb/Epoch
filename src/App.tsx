@@ -13,11 +13,12 @@ import { SettingsPanel } from "./components/SettingsPanel.tsx";
 import { IncompatibleSaveModal } from "./components/IncompatibleSaveModal.tsx";
 import { HintButton } from "./components/HintButton.tsx";
 import { BuildingsTechsPanel, getBuildings } from "./components/BuildingsTechsPanel.tsx";
+import { UpdateBanner } from "./components/UpdateBanner.tsx";
 import { getActionDef } from "./types/actions.ts";
 import type { ActionId, QueueEntry } from "./types/game.ts";
 
 function App() {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, saveNow } = useGame();
   const wakeLock = useWakeLock();
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -103,6 +104,8 @@ function App() {
           </button>
         </div>
       </header>
+
+      <UpdateBanner onBeforeRefresh={saveNow} />
 
       <ResourceBar
         resources={state.run.resources}
