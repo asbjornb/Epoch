@@ -361,8 +361,8 @@ export function tick(state: GameState): GameState {
     const { entry } = current;
     const def = getActionDef(entry.actionId);
     if (def) {
-      // Block farming during winter — pause for player to change queue
-      if (isWinter && entry.actionId === "farm") {
+      // Block farming during winter — let in-progress action finish, then pause
+      if (isWinter && entry.actionId === "farm" && run.currentActionProgress === 0) {
         run.status = "paused";
         log.push({
           year: run.year,
