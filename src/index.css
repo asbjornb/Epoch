@@ -3058,6 +3058,35 @@ h1, h2, h3 {
   border-color: rgba(184, 92, 92, 0.4) !important;
 }
 
+/* ===== Update Banner ===== */
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(106, 143, 170, 0.12);
+  border: 1px solid rgba(106, 143, 170, 0.3);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: var(--text);
+  animation: fadeIn 0.3s ease;
+}
+
+.update-banner-btn {
+  padding: 3px 12px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #1a1612;
+  font-weight: 600;
+  font-size: 0.75rem;
+  transition: background 0.15s;
+}
+
+.update-banner-btn:hover {
+  background: var(--accent-hover);
+}
+
 /* ===== Animations ===== */
 @keyframes fadeIn {
   from { opacity: 0; }

@@ -13,6 +13,7 @@ import { SettingsPanel } from "./components/SettingsPanel.tsx";
 import { IncompatibleSaveModal } from "./components/IncompatibleSaveModal.tsx";
 import { HintButton } from "./components/HintButton.tsx";
 import { BuildingsTechsPanel, getBuildings } from "./components/BuildingsTechsPanel.tsx";
+import { UpdateBanner } from "./components/UpdateBanner.tsx";
 import { getActionDef } from "./types/actions.ts";
 import type { ActionId, QueueEntry } from "./types/game.ts";
 
@@ -103,6 +104,8 @@ function App() {
           </button>
         </div>
       </header>
+
+      <UpdateBanner />
 
       <ResourceBar
         resources={state.run.resources}

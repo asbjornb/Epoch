@@ -2,11 +2,25 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { writeFileSync, mkdirSync } from 'fs'
+
+const buildHash = Date.now().toString(36)
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __BUILD_HASH__: JSON.stringify(buildHash),
+  },
   plugins: [
     react(),
+    {
+      name: 'version-file',
+      writeBundle(options) {
+        const dir = options.dir ?? 'dist'
+        mkdirSync(dir, { recursive: true })
+        writeFileSync(`${dir}/version.txt`, buildHash)
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
