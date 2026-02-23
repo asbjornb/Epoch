@@ -7,6 +7,7 @@ import type {
   EventPopup,
   ActionCategory,
   AchievementId,
+  Skills,
 } from "../types/game.ts";
 import { getActionDef } from "../types/actions.ts";
 import {
@@ -407,7 +408,7 @@ export function tick(state: GameState): GameState {
 
           // Action complete
           if (run.currentActionProgress >= duration) {
-            applyActionCompletion(entry.actionId, resources, outputMult, log, run.year);
+            applyActionCompletion(entry.actionId, resources, outputMult, log, run.year, skills);
             run.currentActionProgress = 0;
             run.currentQueueIndex++;
           }
@@ -622,6 +623,7 @@ function applyActionCompletion(
   outputMult: number,
   log: LogEntry[],
   year: number,
+  skills: Skills,
 ): void {
   switch (actionId) {
     case "build_hut":
@@ -679,7 +681,8 @@ function applyActionCompletion(
       log.push({ year, message: "Tactics researched. Military strength +15%.", type: "info" });
       break;
     case "cure_food": {
-      const amount = Math.min(100, resources.food);
+      const cureAmount = 60 + skills.farming.level * 5;
+      const amount = Math.min(cureAmount, resources.food);
       if (amount > 0) {
         resources.food -= amount;
         resources.preservedFood += amount;
@@ -696,6 +699,7 @@ function applyCompletionPreview(
   actionId: string,
   resources: Resources,
   outputMult: number,
+  skills: Skills,
 ): void {
   switch (actionId) {
     case "build_hut":
@@ -743,7 +747,8 @@ function applyCompletionPreview(
       }
       break;
     case "cure_food": {
-      const amount = Math.min(100, resources.food);
+      const cureAmount = 60 + skills.farming.level * 5;
+      const amount = Math.min(cureAmount, resources.food);
       if (amount > 0) {
         resources.food -= amount;
         resources.preservedFood += amount;
@@ -898,7 +903,7 @@ export function simulateQueuePreview(
 
     // Action complete
     if (actionProgress >= duration) {
-      applyCompletionPreview(entry.actionId, resources, outputMult);
+      applyCompletionPreview(entry.actionId, resources, outputMult, simSkills);
       actionProgress = 0;
       queueLogicalIndex++;
     }
