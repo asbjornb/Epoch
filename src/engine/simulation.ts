@@ -361,8 +361,16 @@ export function tick(state: GameState): GameState {
     const { entry } = current;
     const def = getActionDef(entry.actionId);
     if (def) {
+      // Block farming during winter — pause for player to change queue
+      if (isWinter && entry.actionId === "farm") {
+        run.status = "paused";
+        log.push({
+          year: run.year,
+          message: "Farming is impossible during the Great Cold. Change your action to continue.",
+          type: "warning",
+        });
       // Skip already-researched techs
-      if (run.currentActionProgress === 0 && isResearchTech(entry.actionId) && resources.researchedTechs.includes(entry.actionId)) {
+      } else if (run.currentActionProgress === 0 && isResearchTech(entry.actionId) && resources.researchedTechs.includes(entry.actionId)) {
         run.currentActionProgress = 0;
         run.currentQueueIndex++;
       } else {
