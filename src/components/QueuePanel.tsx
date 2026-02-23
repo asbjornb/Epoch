@@ -1031,6 +1031,11 @@ export function QueuePanel({
     onDraftModeChange(false);
   };
 
+  const applyDraftFromNext = () => {
+    dispatch({ type: "queue_load", queue: draftQueue, repeatLastAction: draftRepeatLast });
+    onDraftModeChange(false);
+  };
+
   const copyFromLive = () => {
     onDraftQueueChange(queue.map((e) => ({ ...e })));
     onDraftRepeatLastChange(run.repeatLastAction);
@@ -1545,14 +1550,24 @@ export function QueuePanel({
             </>
           )}
           {draftMode && (
-            <button
-              className="ctrl-btn primary"
-              onClick={applyDraft}
-              disabled={draftQueue.length === 0}
-              title="Replace live queue with this draft"
-            >
-              Apply
-            </button>
+            <>
+              <button
+                className="ctrl-btn primary"
+                onClick={applyDraft}
+                disabled={draftQueue.length === 0}
+                title="Replace live queue with this draft and start a new run"
+              >
+                Apply &amp; Start Over
+              </button>
+              <button
+                className="ctrl-btn"
+                onClick={applyDraftFromNext}
+                disabled={draftQueue.length === 0 || run.status === "idle" || run.status === "collapsed" || run.status === "victory"}
+                title="Replace live queue with this draft without restarting the run"
+              >
+                Apply from Next
+              </button>
+            </>
           )}
         </div>
       </div>
