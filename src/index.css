@@ -69,6 +69,46 @@ h1, h2, h3 {
   font-weight: 600;
 }
 
+/* ===== Update Banner ===== */
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: rgba(106, 143, 170, 0.12);
+  border: 1px solid rgba(106, 143, 170, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  animation: slideUp 0.25s ease;
+}
+
+.update-banner:hover {
+  background: rgba(106, 143, 170, 0.2);
+}
+
+.update-banner-text {
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.update-banner-btn {
+  padding: 3px 12px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--research);
+  color: var(--bg);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.update-banner-btn:hover {
+  filter: brightness(1.15);
+}
+
 /* ===== App Layout ===== */
 .app {
   max-width: 960px;
