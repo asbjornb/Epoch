@@ -18,7 +18,7 @@ import { getActionDef } from "./types/actions.ts";
 import type { ActionId, QueueEntry } from "./types/game.ts";
 
 function App() {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, saveNow } = useGame();
   const wakeLock = useWakeLock();
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -105,7 +105,7 @@ function App() {
         </div>
       </header>
 
-      <UpdateBanner />
+      <UpdateBanner onBeforeRefresh={saveNow} />
 
       <ResourceBar
         resources={state.run.resources}

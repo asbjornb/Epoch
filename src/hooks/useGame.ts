@@ -1591,5 +1591,9 @@ export function useGame() {
     };
   }, [state.run.status, state.run.autoRestart]);
 
-  return { state, dispatch };
+  const saveNow = useCallback(() => {
+    saveGameState(stateRef.current);
+  }, []);
+
+  return { state, dispatch, saveNow };
 }

@@ -1,6 +1,6 @@
 import { useVersionCheck } from "../hooks/useVersionCheck.ts";
 
-export function UpdateBanner() {
+export function UpdateBanner({ onBeforeRefresh }: { onBeforeRefresh: () => void }) {
   const updateAvailable = useVersionCheck();
 
   if (!updateAvailable) return null;
@@ -8,7 +8,10 @@ export function UpdateBanner() {
   return (
     <div className="update-banner">
       <span>A new version is available.</span>
-      <button className="update-banner-btn" onClick={() => location.reload()}>
+      <button className="update-banner-btn" onClick={() => {
+        onBeforeRefresh();
+        location.reload();
+      }}>
         Refresh
       </button>
     </div>
