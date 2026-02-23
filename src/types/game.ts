@@ -21,6 +21,8 @@ export interface Resources {
   foodStorage: number;
   granariesBuilt: number;
   researchedTechs: ActionId[];
+  locationsDiscovered: number;
+  locationsLooted: number;
 }
 
 export type ActionId =
@@ -38,6 +40,7 @@ export type ActionId =
   | "research_tactics"
   | "gather_wood"
   | "scout"
+  | "loot"
   | "cure_food"
   | "winter_hunt";
 

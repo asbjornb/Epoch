@@ -63,6 +63,14 @@ export function ResourceBar({ resources, year, maxYear, encounteredDisasters }: 
         {resources.wood > 0 && (
           <ResourceItem label="Wood" value={Math.floor(resources.wood)} icon="🪵" color="#9a8a72" />
         )}
+        {resources.locationsDiscovered > 0 && (
+          <ResourceItem
+            label="Scouted"
+            value={resources.locationsDiscovered - resources.locationsLooted}
+            icon="🗺"
+            color="#7a8a6a"
+          />
+        )}
         {resources.militaryStrength > 0 && (() => {
           const totalDef = getTotalDefense(resources);
           const baseMil = Math.floor(resources.militaryStrength);
