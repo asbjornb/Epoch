@@ -270,6 +270,9 @@ function QueueGroup({
   isLastSegment,
   activeGroupIter,
   totalGroupIters,
+  collapsed,
+  collapsedSummary,
+  onToggleCollapse,
   onSetGroupRepeat,
   onMoveGroup,
   onDuplicateGroup,
@@ -282,20 +285,38 @@ function QueueGroup({
   isLastSegment: boolean;
   activeGroupIter: number; // 0 if not active, 1-based iter if active
   totalGroupIters: number;
+  collapsed: boolean;
+  collapsedSummary?: {
+    currentActionName: string;
+    currentActionColor: string;
+    actionProgress: number;
+    actionDuration: number;
+    totalYears: number;
+    isActive: boolean;
+    actionCount: number;
+  };
+  onToggleCollapse: () => void;
   onSetGroupRepeat: (groupId: string, repeat: number) => void;
   onMoveGroup: (groupId: string, direction: "up" | "down") => void;
   onDuplicateGroup: (groupId: string) => void;
   onSplitGroup: (groupId: string) => void;
 }) {
-  const showIterProgress = activeGroupIter > 0 && groupRepeat > 1;
+  const showIterProgress = !collapsed && activeGroupIter > 0 && groupRepeat > 1;
   const iterPct = showIterProgress
     ? Math.min(100, ((activeGroupIter - 1) / groupRepeat) * 100)
     : 0;
 
   return (
-    <div className="queue-group">
+    <div className={`queue-group${collapsed ? " queue-group-collapsed" : ""}`}>
       <div className="queue-group-header">
         <div className="queue-group-header-left">
+          <button
+            className="queue-btn queue-collapse-btn"
+            onClick={onToggleCollapse}
+            title={collapsed ? "Expand group" : "Collapse group"}
+          >
+            {collapsed ? "▶" : "▼"}
+          </button>
           <span className="queue-group-label">Group</span>
           <span className="queue-repeat-control">
             <button
@@ -360,29 +381,72 @@ function QueueGroup({
           </button>
         </div>
       </div>
-      <div className="queue-group-items">
-        {children}
-      </div>
-      {showIterProgress && (
-        <div className="queue-repeat-progress queue-group-iter-progress">
-          <div className="queue-repeat-progress-track">
+      {collapsed && collapsedSummary ? (
+        <div className="queue-group-summary">
+          {collapsedSummary.isActive && (
             <div
-              className="queue-repeat-progress-fill"
-              style={{ width: `${iterPct}%` }}
+              className="queue-item-progress"
+              style={{ width: `${Math.min(100, (collapsedSummary.actionProgress / collapsedSummary.actionDuration) * 100)}%` }}
             />
-            {Array.from({ length: groupRepeat - 1 }, (_, i) => (
-              <div
-                key={i}
-                className="queue-repeat-progress-divider"
-                style={{ left: `${((i + 1) / groupRepeat) * 100}%` }}
-              />
-            ))}
+          )}
+          <div className="queue-group-summary-content">
+            <span
+              className="queue-item-dot"
+              style={{ background: collapsedSummary.currentActionColor }}
+            />
+            <span className="queue-item-name">
+              {collapsedSummary.currentActionName}
+            </span>
+            <span className="queue-group-summary-meta">
+              {collapsedSummary.actionCount} actions
+            </span>
+            <span className="queue-item-timer">
+              {collapsedSummary.isActive
+                ? `${collapsedSummary.actionProgress}/${collapsedSummary.actionDuration} yrs`
+                : `${collapsedSummary.totalYears.toLocaleString()} yrs total`}
+            </span>
           </div>
-          <span className="queue-repeat-progress-label">
-            cycle {activeGroupIter} of {totalGroupIters}
-          </span>
+          {collapsedSummary.isActive && activeGroupIter > 0 && groupRepeat > 1 && (
+            <div className="queue-repeat-progress queue-group-iter-progress">
+              <div className="queue-repeat-progress-track">
+                <div
+                  className="queue-repeat-progress-fill"
+                  style={{ width: `${Math.min(100, ((activeGroupIter - 1) / groupRepeat) * 100)}%` }}
+                />
+              </div>
+              <span className="queue-repeat-progress-label">
+                cycle {activeGroupIter} of {totalGroupIters}
+              </span>
+            </div>
+          )}
         </div>
-      )}
+      ) : !collapsed ? (
+        <>
+          <div className="queue-group-items">
+            {children}
+          </div>
+          {showIterProgress && (
+            <div className="queue-repeat-progress queue-group-iter-progress">
+              <div className="queue-repeat-progress-track">
+                <div
+                  className="queue-repeat-progress-fill"
+                  style={{ width: `${iterPct}%` }}
+                />
+                {Array.from({ length: groupRepeat - 1 }, (_, i) => (
+                  <div
+                    key={i}
+                    className="queue-repeat-progress-divider"
+                    style={{ left: `${((i + 1) / groupRepeat) * 100}%` }}
+                  />
+                ))}
+              </div>
+              <span className="queue-repeat-progress-label">
+                cycle {activeGroupIter} of {totalGroupIters}
+              </span>
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }
@@ -677,6 +741,17 @@ export function QueuePanel({
   const isRunning = run.status === "running";
   const isPaused = run.status === "paused";
   const isEnded = run.status === "collapsed" || run.status === "victory";
+
+  // Collapsed groups (UI-only, set of groupIds)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupCollapse = (groupId: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
 
   // Drag-and-drop state (shared between mouse and touch)
   const [dragSourceSegIdx, setDragSourceSegIdx] = useState<number | null>(null);
@@ -1258,15 +1333,39 @@ export function QueuePanel({
         const groupEntries = seg.entries;
         const groupId = seg.groupId!;
         const groupRepeat = seg.groupRepeat ?? 1;
+        const isCollapsed = collapsedGroups.has(groupId);
 
         let groupActiveIter = 0;
+        let activeEntryInGroup: { entry: QueueEntry; arrayIndex: number } | null = null;
         if (activeInfo && isLive) {
-          for (const { arrayIndex } of groupEntries) {
-            if (arrayIndex === activeInfo.activeArrayIdx) {
+          for (const item of groupEntries) {
+            if (item.arrayIndex === activeInfo.activeArrayIdx) {
               groupActiveIter = activeInfo.activeGroupIter + 1;
+              activeEntryInGroup = item;
               break;
             }
           }
+        }
+
+        // Compute collapsed summary
+        let collapsedSummary: Parameters<typeof QueueGroup>[0]["collapsedSummary"];
+        if (isCollapsed) {
+          const displayEntry = activeEntryInGroup ?? groupEntries[0];
+          const displayDef = getActionDef(displayEntry.entry.actionId);
+          const displayDuration = getEffDuration(displayEntry.entry.actionId);
+          const isGroupActive = !!activeEntryInGroup && run.status === "running";
+          const totalYears = groupEntries.reduce(
+            (sum, { entry }) => sum + getEffDuration(entry.actionId) * entry.repeat, 0,
+          ) * groupRepeat;
+          collapsedSummary = {
+            currentActionName: displayDef?.name ?? "Unknown",
+            currentActionColor: SKILL_COLORS[displayDef?.skill ?? "farming"],
+            actionProgress: isGroupActive ? run.currentActionProgress : 0,
+            actionDuration: displayDuration,
+            totalYears,
+            isActive: isGroupActive,
+            actionCount: groupEntries.length,
+          };
         }
 
         segContent = (
@@ -1277,6 +1376,9 @@ export function QueuePanel({
             isLastSegment={isLastSegment}
             activeGroupIter={groupActiveIter}
             totalGroupIters={groupRepeat}
+            collapsed={isCollapsed}
+            collapsedSummary={collapsedSummary}
+            onToggleCollapse={() => toggleGroupCollapse(groupId)}
             onSetGroupRepeat={callbacks.onSetGroupRepeat}
             onMoveGroup={callbacks.onMoveGroup}
             onDuplicateGroup={callbacks.onDuplicateGroup}
