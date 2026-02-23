@@ -2102,6 +2102,38 @@ h1, h2, h3 {
   background: var(--bg-hover);
 }
 
+/* Shared queue import modal */
+.shared-queue-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 10px 0;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.shared-queue-preview .saved-queue-preview-action.locked .saved-queue-preview-action-name {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.shared-queue-repeat-last {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  padding: 4px 4px 0;
+  font-style: italic;
+}
+
+.shared-queue-locked-note {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin: 4px 0 8px;
+  font-style: italic;
+}
+
 /* Event toast (auto-dismiss for opted-out events) */
 .event-toast {
   position: fixed;
