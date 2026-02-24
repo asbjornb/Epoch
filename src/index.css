@@ -896,6 +896,22 @@ h1, h2, h3 {
   white-space: nowrap;
 }
 
+/* Extra separation between consecutive groups */
+.queue-drag-segment:has(> .queue-group) + .queue-drag-segment:has(> .queue-group) {
+  margin-top: 4px;
+  position: relative;
+}
+
+.queue-drag-segment:has(> .queue-group) + .queue-drag-segment:has(> .queue-group)::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: var(--border-light);
+}
+
 /* Drag-and-drop segment wrapper */
 .queue-drag-segment {
   position: relative;
