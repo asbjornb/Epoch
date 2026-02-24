@@ -109,6 +109,7 @@ export function createInitialRun(): RunState {
     pendingEvents: [],
     pausedByEvent: false,
     totalFoodSpoiled: 0,
+    lastTickTime: 0,
   };
 }
 

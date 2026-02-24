@@ -90,6 +90,8 @@ export interface RunState {
   pendingEvents: EventPopup[];
   pausedByEvent: boolean;
   totalFoodSpoiled: number;
+  /** Wall-clock timestamp (ms) of the last processed tick, for background-tab catch-up. */
+  lastTickTime: number;
 }
 
 export interface LogEntry {

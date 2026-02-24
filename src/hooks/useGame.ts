@@ -397,71 +397,115 @@ function computeQueueCompletions(
   return completions;
 }
 
+/** Process a single simulation tick plus post-tick logic (unlocks, events, snapshots). */
+function processSingleTick(state: GameState): GameState {
+  let tickedState = tick(state);
+
+  // When food cap is reached, unlock the other starting actions
+  const { resources } = tickedState.run;
+  if (resources.food >= resources.foodStorage) {
+    const startingUnlocks: ActionId[] = ["gather_wood", "research_tools"];
+    const missing = startingUnlocks.filter(id => !tickedState.unlockedActions.includes(id));
+    if (missing.length > 0) {
+      const unlockedActions = [...tickedState.unlockedActions, ...missing];
+      localStorage.setItem("epoch_unlocked_actions", JSON.stringify(unlockedActions));
+
+      const shouldPause = !tickedState.autoDismissEventTypes.includes("food_cap_unlock");
+      const firstTime = !tickedState.seenEventTypes.includes("food_cap_unlock");
+      const run = { ...tickedState.run };
+      run.pendingEvents = [...run.pendingEvents, {
+        eventId: "food_cap_unlock",
+        title: "New Skills Discovered",
+        message: "Your food stores are full. Your people now have time to explore new pursuits: gathering wood and tool research. Build structures to unlock more.",
+        type: "success" as const,
+        year: run.year,
+        firstTime,
+      }];
+      if (shouldPause) {
+        run.status = "paused";
+        run.pausedByEvent = true;
+      }
+      run.log = [...run.log, {
+        year: run.year,
+        message: "Food storage full — new skills unlocked: Building, Research.",
+        type: "success" as const,
+      }];
+
+      tickedState = { ...tickedState, unlockedActions, run };
+    }
+  }
+
+  // Check if skills unlocked new actions
+  const newUnlocks = computeSkillUnlocks(tickedState.unlockedActions, tickedState.skills, tickedState.run.resources.researchedTechs, tickedState.run.resources.wallsBuilt, tickedState.run.resources.barracksBuilt);
+  if (newUnlocks !== tickedState.unlockedActions) {
+    localStorage.setItem("epoch_unlocked_actions", JSON.stringify(newUnlocks));
+    tickedState = { ...tickedState, unlockedActions: newUnlocks };
+  }
+
+  // Snapshot state when a run ends so the summary modal persists through auto-restart
+  const ended = tickedState.run.status === "collapsed" || tickedState.run.status === "victory";
+  if (ended && state.run.status !== "collapsed" && state.run.status !== "victory") {
+    tickedState = {
+      ...tickedState,
+      endedRunSnapshot: {
+        run: tickedState.run,
+        skills: tickedState.skills,
+        skillsAtRunStart: tickedState.skillsAtRunStart,
+        lastRunYear: tickedState.lastRunYear,
+        totalRuns: tickedState.totalRuns + 1,
+      },
+    };
+  }
+  return tickedState;
+}
+
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "tick": {
-      let tickedState = tick(state);
+      const now = Date.now();
+      const TICK_INTERVAL = 100; // ms per tick
+      const CATCHUP_TIME_LIMIT = 1000; // bail out after 1s to keep UI responsive
 
-      // When food cap is reached, unlock the other starting actions
-      const { resources } = tickedState.run;
-      if (resources.food >= resources.foodStorage) {
-        const startingUnlocks: ActionId[] = ["gather_wood", "research_tools"];
-        const missing = startingUnlocks.filter(id => !tickedState.unlockedActions.includes(id));
-        if (missing.length > 0) {
-          const unlockedActions = [...tickedState.unlockedActions, ...missing];
-          localStorage.setItem("epoch_unlocked_actions", JSON.stringify(unlockedActions));
+      let ticksToRun = 1;
+      if (state.run.lastTickTime > 0) {
+        const elapsed = now - state.run.lastTickTime;
+        ticksToRun = Math.max(1, Math.floor(elapsed / TICK_INTERVAL));
+      }
 
-          const shouldPause = !tickedState.autoDismissEventTypes.includes("food_cap_unlock");
-          const firstTime = !tickedState.seenEventTypes.includes("food_cap_unlock");
-          const run = { ...tickedState.run };
-          run.pendingEvents = [...run.pendingEvents, {
-            eventId: "food_cap_unlock",
-            title: "New Skills Discovered",
-            message: "Your food stores are full. Your people now have time to explore new pursuits: gathering wood and tool research. Build structures to unlock more.",
-            type: "success" as const,
-            year: run.year,
-            firstTime,
-          }];
-          if (shouldPause) {
-            run.status = "paused";
-            run.pausedByEvent = true;
-          }
-          run.log = [...run.log, {
-            year: run.year,
-            message: "Food storage full — new skills unlocked: Building, Research.",
-            type: "success" as const,
-          }];
+      let current = state;
+      let ticksProcessed = 0;
+      const catchupStart = performance.now();
 
-          tickedState = { ...tickedState, unlockedActions, run };
+      for (let i = 0; i < ticksToRun; i++) {
+        // Auto-restart collapsed runs during catch-up to keep simulating
+        if (current.run.status === "collapsed" && current.run.autoRestart) {
+          current = gameReducer(current, { type: "reset_run" });
+          current = gameReducer(current, { type: "start_run" });
+          current = { ...current, endedRunSnapshot: null };
+          continue; // restart doesn't consume a simulation tick
         }
+
+        if (current.run.status !== "running") break;
+        current = processSingleTick(current);
+        ticksProcessed++;
+
+        // Periodically check if we've spent too long catching up
+        if (ticksProcessed % 1000 === 0 && performance.now() - catchupStart > CATCHUP_TIME_LIMIT) break;
       }
 
-      // Check if skills unlocked new actions
-      const newUnlocks = computeSkillUnlocks(tickedState.unlockedActions, tickedState.skills, tickedState.run.resources.researchedTechs, tickedState.run.resources.wallsBuilt, tickedState.run.resources.barracksBuilt);
-      if (newUnlocks !== tickedState.unlockedActions) {
-        localStorage.setItem("epoch_unlocked_actions", JSON.stringify(newUnlocks));
-        tickedState = { ...tickedState, unlockedActions: newUnlocks };
-      }
+      // Advance lastTickTime by actual ticks processed (so remaining catch-up continues next tick)
+      const newLastTickTime = state.run.lastTickTime > 0
+        ? state.run.lastTickTime + ticksProcessed * TICK_INTERVAL
+        : now;
 
-      // Snapshot state when a run ends so the summary modal persists through auto-restart
-      const ended = tickedState.run.status === "collapsed" || tickedState.run.status === "victory";
-      if (ended && state.run.status !== "collapsed" && state.run.status !== "victory") {
-        tickedState = {
-          ...tickedState,
-          endedRunSnapshot: {
-            run: tickedState.run,
-            skills: tickedState.skills,
-            skillsAtRunStart: tickedState.skillsAtRunStart,
-            lastRunYear: tickedState.lastRunYear,
-            totalRuns: tickedState.totalRuns + 1,
-          },
-        };
-      }
-      return tickedState;
+      return {
+        ...current,
+        run: { ...current.run, lastTickTime: newLastTickTime },
+      };
     }
 
     case "start_run": {
-      const run = { ...state.run, status: "running" as const };
+      const run = { ...state.run, status: "running" as const, lastTickTime: Date.now() };
       return { ...state, run, skillsAtRunStart: cloneSkills(state.skills) };
     }
 
@@ -471,7 +515,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "resume_run": {
-      const run = { ...state.run, status: "running" as const };
+      const run = { ...state.run, status: "running" as const, lastTickTime: Date.now() };
       return { ...state, run };
     }
 
@@ -1555,6 +1599,9 @@ export function useGame() {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         saveGameState(stateRef.current);
+      } else if (stateRef.current.run.status === "running") {
+        // Tab became visible again — dispatch a tick to trigger background catch-up
+        dispatch({ type: "tick" });
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
