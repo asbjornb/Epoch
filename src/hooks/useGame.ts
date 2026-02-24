@@ -464,26 +464,43 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case "tick": {
       const now = Date.now();
       const TICK_INTERVAL = 100; // ms per tick
-      const MAX_CATCHUP_TICKS = 6000; // cap: 10 minutes of background time
+      const CATCHUP_TIME_LIMIT = 1000; // bail out after 1s to keep UI responsive
 
       let ticksToRun = 1;
       if (state.run.lastTickTime > 0) {
         const elapsed = now - state.run.lastTickTime;
         ticksToRun = Math.max(1, Math.floor(elapsed / TICK_INTERVAL));
-        ticksToRun = Math.min(ticksToRun, MAX_CATCHUP_TICKS);
       }
 
       let current = state;
+      let ticksProcessed = 0;
+      const catchupStart = performance.now();
+
       for (let i = 0; i < ticksToRun; i++) {
-        // Stop catching up if game is no longer running (paused by event, collapsed, etc.)
+        // Auto-restart collapsed runs during catch-up to keep simulating
+        if (current.run.status === "collapsed" && current.run.autoRestart) {
+          current = gameReducer(current, { type: "reset_run" });
+          current = gameReducer(current, { type: "start_run" });
+          current = { ...current, endedRunSnapshot: null };
+          continue; // restart doesn't consume a simulation tick
+        }
+
         if (current.run.status !== "running") break;
         current = processSingleTick(current);
+        ticksProcessed++;
+
+        // Periodically check if we've spent too long catching up
+        if (ticksProcessed % 1000 === 0 && performance.now() - catchupStart > CATCHUP_TIME_LIMIT) break;
       }
 
-      // Update lastTickTime
+      // Advance lastTickTime by actual ticks processed (so remaining catch-up continues next tick)
+      const newLastTickTime = state.run.lastTickTime > 0
+        ? state.run.lastTickTime + ticksProcessed * TICK_INTERVAL
+        : now;
+
       return {
         ...current,
-        run: { ...current.run, lastTickTime: now },
+        run: { ...current.run, lastTickTime: newLastTickTime },
       };
     }
 
